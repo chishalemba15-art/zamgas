@@ -1,0 +1,355 @@
+package user
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"strings"
+	"time"
+	"unicode"
+
+	"github.com/yakumwamba/lpg-delivery-system/internal/order"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+type Service struct {
+	collection *mongo.Collection
+}
+
+func NewService(db *mongo.Database) *Service {
+	return &Service{
+		collection: db.Collection("users"),
+	}
+}
+
+// ErrUserNotFound is returned when a user is not found in the database
+var ErrUserNotFound = errors.New("user not found")
+
+func (s *Service) CreateUser(user *User) (*User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	user.CreatedAt = primitive.NewDateTimeFromTime(time.Now())
+	user.UpdatedAt = user.CreatedAt
+
+	result, err := s.collection.InsertOne(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	user.ID = result.InsertedID.(primitive.ObjectID)
+	return user, nil
+}
+
+func (s *Service) GetUserByEmail(email string) (*User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var user User
+	err := s.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+	println(user.Name)
+	return &user, nil
+}
+func (s *Service) GetUserByID(id primitive.ObjectID) (*User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var user User
+	err := s.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (s *Service) GetUserBySupabaseUID(supabaseUID string) (*User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var user User
+	err := s.collection.FindOne(ctx, bson.M{"supabase_uid": supabaseUID}).Decode(&user)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+
+	return &user, nil
+}
+
+func (s *Service) UpdateUser(user *User) error {
+	log.Printf("[PhoneUpdate] Starting update process")
+	log.Printf("[PhoneUpdate] User ID: %s", user.ID.Hex())
+	// log.Printf("[PhoneUpdate] Current phone in DB: %s", user.CurrentPhoneNumber) // Add this if you have access to current value
+	log.Printf("[PhoneUpdate] Requested new phone: %s", user.PhoneNumber)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Add debug log to show full user object
+	userBytes, _ := json.Marshal(user)
+	log.Printf("[PhoneUpdate] Full user object: %s", string(userBytes))
+
+	// Validate phone number format before updating
+	if !validatePhoneNumber(user.PhoneNumber) {
+		log.Printf("[PhoneUpdate] Validation failed for phone: %s", user.PhoneNumber)
+		return fmt.Errorf("invalid phone number format")
+	}
+
+	// Normalize phone number format
+	normalizedPhone, err := normalizePhoneNumber(user.PhoneNumber)
+	if err != nil {
+		log.Printf("[PhoneUpdate] Normalization failed for phone: %s, error: %v", user.PhoneNumber, err)
+		return fmt.Errorf("phone number normalization error: %w", err)
+	}
+
+	log.Printf("[PhoneUpdate] Phone number transformation:")
+	log.Printf("  → Original: %s", user.PhoneNumber)
+	log.Printf("  → Normalized: %s", normalizedPhone)
+
+	// Set the normalized phone number
+	user.PhoneNumber = normalizedPhone
+
+	// Set update timestamp
+	user.UpdatedAt = primitive.NewDateTimeFromTime(time.Now())
+
+	// Create update document
+	update := bson.M{
+		"$set": bson.M{
+			"phone_number": user.PhoneNumber,
+			"updated_at":   user.UpdatedAt,
+		},
+	}
+
+	// Log the exact update operation
+	updateBytes, _ := json.Marshal(update)
+	log.Printf("[PhoneUpdate] Update operation: %s", string(updateBytes))
+
+	// Perform the update operation
+	result, err := s.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": user.ID},
+		update,
+	)
+
+	if err != nil {
+		log.Printf("[PhoneUpdate] Database update failed: %v", err)
+		return fmt.Errorf("error updating user: %w", err)
+	}
+
+	// Log the update results
+	log.Printf("[PhoneUpdate] Update results:")
+	log.Printf("  → Modified count: %d", result.ModifiedCount)
+	log.Printf("  → Matched count: %d", result.MatchedCount)
+
+	// Verify the update by fetching the updated document
+	var updatedUser User
+	err = s.collection.FindOne(ctx, bson.M{"_id": user.ID}).Decode(&updatedUser)
+	if err != nil {
+		log.Printf("[PhoneUpdate] Failed to fetch updated user: %v", err)
+	} else {
+		log.Printf("[PhoneUpdate] Verified phone number in database: %s", updatedUser.PhoneNumber)
+	}
+
+	if result.MatchedCount == 0 {
+		log.Printf("[PhoneUpdate] No document found with ID: %s", user.ID.Hex())
+		return fmt.Errorf("no document found with _id: %s", user.ID.Hex())
+	}
+
+	log.Printf("[PhoneUpdate] Successfully completed update for user ID: %s", user.ID.Hex())
+	return nil
+}
+
+// Helper function to validate Zambian phone numbers
+func validatePhoneNumber(phone string) bool {
+	// Remove all spaces and special characters
+	phone = strings.ReplaceAll(phone, " ", "")
+	phone = strings.ReplaceAll(phone, "-", "")
+	phone = strings.ReplaceAll(phone, "+", "")
+
+	// Check if number starts with Zambian country code (260)
+	if !strings.HasPrefix(phone, "260") {
+		return false
+	}
+
+	// Check if the total length is correct (12 digits including country code)
+	if len(phone) != 12 {
+		return false
+	}
+
+	// Check if all characters are digits
+	for _, char := range phone {
+		if !unicode.IsDigit(char) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Helper function to normalize phone numbers
+func normalizePhoneNumber(phone string) (string, error) {
+	// Remove all spaces and special characters
+	phone = strings.ReplaceAll(phone, " ", "")
+	phone = strings.ReplaceAll(phone, "-", "")
+
+	// If number starts with 0, replace with country code
+	if strings.HasPrefix(phone, "0") {
+		phone = "26" + phone[1:]
+	}
+
+	// If number doesn't have +, add it
+	if !strings.HasPrefix(phone, "+") {
+		phone = "+" + phone
+	}
+
+	// // Validate the normalized number
+	// cleanPhone := strings.ReplaceAll(phone, "+", "")
+	// if !validatePhoneNumber(cleanPhone) {
+	// 	return "", fmt.Errorf("invalid phone number after normalization")
+	// }
+
+	return phone, nil
+}
+
+func (s *Service) GetProviders() ([]order.Order, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var providers []order.Order
+	cursor, err := s.collection.Find(ctx, bson.M{"role": "provider"})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var provider order.Order
+		if err := cursor.Decode(&provider); err != nil {
+			return nil, err
+		}
+		providers = append(providers, provider)
+	}
+
+	return providers, nil
+}
+
+func (s *Service) GetAllProviders() ([]*User, error) {
+	ctx := context.Background()
+	filter := bson.M{"user_type": "provider"}
+
+	cursor, err := s.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var providers []*User
+	for cursor.Next(ctx) {
+		var provider User
+		if err := cursor.Decode(&provider); err != nil {
+			return nil, err
+		}
+		providers = append(providers, &provider)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return providers, nil
+}
+
+// UpdateUserLocation updates the location of a user in the database
+func (s *Service) UpdateUserLocation(userID primitive.ObjectID, location Location) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Create an update document
+	update := bson.M{
+		"$set": bson.M{
+			"location":   location,
+			"updated_at": primitive.NewDateTimeFromTime(time.Now()),
+		},
+	}
+
+	// Perform the update operation
+	_, err := s.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": userID},
+		update,
+	)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	return nil
+}
+
+// In user/service.go
+func validateZambianPhone(phone string) bool {
+	phone = strings.ReplaceAll(phone, " ", "")
+	phone = strings.ReplaceAll(phone, "+", "")
+
+	if len(phone) != 12 || !strings.HasPrefix(phone, "260") {
+		return false
+	}
+
+	firstDigit := phone[3]
+	if firstDigit != '7' && firstDigit != '9' && firstDigit != '8' {
+		return false
+	}
+
+	return true
+}
+
+func normalizeZambianPhone(phone string) (string, error) {
+	phone = strings.ReplaceAll(phone, " ", "")
+
+	if strings.HasPrefix(phone, "0") {
+		phone = "260" + phone[1:]
+	}
+
+	if !strings.HasPrefix(phone, "+") {
+		phone = "+" + phone
+	}
+
+	if !validateZambianPhone(strings.TrimPrefix(phone, "+")) {
+		return "", fmt.Errorf("invalid phone number")
+	}
+
+	return phone, nil
+}
+func (s *Service) GetUserByPhoneNumber(phoneNumber string) (*User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	normalizedPhone, err := normalizePhoneNumber(phoneNumber)
+	if err != nil {
+		return nil, fmt.Errorf("phone number normalization error: %w", err)
+	}
+
+	var user User
+	err = s.collection.FindOne(ctx, bson.M{"phone_number": normalizedPhone}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}

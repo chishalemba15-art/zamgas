@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  app:
+    image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/lpg-gas-zambia/lpg_delivery:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+    networks:
+      - lpg-network
+
+  mongo:
+    image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/lpg-gas-zambia/mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - lpg-network
+
+networks:
+  lpg-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:

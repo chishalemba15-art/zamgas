@@ -1,0 +1,115 @@
+package payment
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/yakumwamba/lpg-delivery-system/internal/order"
+	"github.com/yakumwamba/lpg-delivery-system/internal/pawapay"
+	"github.com/yakumwamba/lpg-delivery-system/internal/user"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+type Service struct {
+	db           *mongo.Database
+	orderService *order.Service
+	userService  *user.Service
+	pawaPay      *pawapay.Client
+}
+
+func NewService(db *mongo.Database, orderService *order.Service, userService *user.Service, pawaPay *pawapay.Client) *Service {
+	return &Service{
+		db:           db,
+		orderService: orderService,
+		userService:  userService,
+		pawaPay:      pawaPay,
+	}
+}
+
+// InitiateDeposit initiates a deposit using PawaPay
+func (s *Service) InitiateDeposit(orderID primitive.ObjectID, amount float64, phoneNumber string) (*Payment, error) {
+
+	// // Create deposit request payload according to PawaPay API specs
+	// depositRequest := map[string]interface{}{
+	// 	"depositId":     depositID,
+	// 	"amount":        fmt.Sprintf("%.2f", amount), // Convert to string with 2 decimal places
+	// 	"currency":      "ZMW",
+	// 	"country":       "ZMB",
+	// 	"correspondent": "MTN_MOMO_ZMB",
+	// 	"payer": map[string]interface{}{
+	// 		"type": "MSISDN",
+	// 		"address": map[string]interface{}{
+	// 			"value": phoneNumber,
+	// 		},
+	// 	},
+	// 	"customerTimestamp":    time.Now().UTC().Format(time.RFC3339),
+	// 	"statementDescription": "Payment", // This should be 4-22 chars
+	// 	"metadata": []map[string]interface{}{{
+	// 		"fieldName": "orderId", // Add required fieldName
+	// 		"value":     orderID.Hex(),
+	// 		"sensitive": false,
+	// 	}},
+	// }
+
+	// Send deposit request to PawaPay
+	depositResponse, err := s.pawaPay.InitiateDeposit(orderID.Hex(), amount, phoneNumber)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initiate deposit: %w", err)
+	}
+
+	fmt.Println("Here is the deposit response", depositResponse)
+
+	// Save payment record
+	payment := &Payment{
+		OrderID:        orderID,
+		Amount:         amount,
+		Status:         PaymentStatusPending,
+		Provider:       "pawapay",
+		PhoneNumber:    phoneNumber,
+		TransactionRef: depositResponse.DepositID,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+
+	result, err := s.db.Collection("payments").InsertOne(context.Background(), payment)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save payment: %w", err)
+	}
+
+	payment.ID = result.InsertedID.(primitive.ObjectID)
+	return payment, nil
+}
+
+// HandleDepositCallback handles the callback from PawaPay
+func (s *Service) HandleDepositCallback(depositID string, status string) error {
+	// Update payment status based on callback
+	var paymentStatus PaymentStatus
+	switch status {
+	case "COMPLETED":
+		paymentStatus = PaymentStatusCompleted
+	case "FAILED":
+		paymentStatus = PaymentStatusFailed
+	default:
+		return errors.New("invalid deposit status")
+	}
+
+	// Update payment record
+	filter := bson.M{"transaction_ref": depositID}
+	update := bson.M{
+		"$set": bson.M{
+			"status":     paymentStatus,
+			"updated_at": time.Now(),
+		},
+	}
+
+	_, err := s.db.Collection("payments").UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		return fmt.Errorf("failed to update payment status: %w", err)
+	}
+
+	return nil
+}

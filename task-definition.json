@@ -1,0 +1,58 @@
+{
+  "family": "zamgas-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "256",
+  "memory": "512",
+  "containerDefinitions": [
+    {
+      "name": "zamgas-container",
+      "image": "296093722884.dkr.ecr.eu-west-2.amazonaws.com/zamgas:v23",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8080"
+        },
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://neondb_owner:npg_EzOo3S0rwNpT@ep-shy-lake-adm3ldex-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+        },
+        {
+          "name": "JWT_SECRET",
+          "value": "s6n07wIFCOAxhZrCEhY3iTGbUYGp5mudiNsjjMJIihbMCsxgfvO9eKd/Ul/e0z9sTldoEIXl8pkq+98aFMcKLQ=="
+        },
+        {
+          "name": "TWILIO_ACCOUNT_SID",
+          "value": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        },
+        {
+          "name": "TWILIO_AUTH_TOKEN",
+          "value": "placeholder-auth-token"
+        },
+        {
+          "name": "TWILIO_PHONE_NUMBER",
+          "value": "+1234567890"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/zamgas",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "essential": true
+    }
+  ],
+  "executionRoleArn": "arn:aws:iam::296093722884:role/ecsTaskExecutionRole"
+}

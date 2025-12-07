@@ -1,0 +1,148 @@
+// Prisma Schema for LPG Delivery System
+// This is a reference schema - the actual application uses pgx/v5 for PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Users table
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String?   @unique @db.VarChar(255)
+  password        String    @db.VarChar(255)
+  name            String    @db.VarChar(255)
+  phoneNumber     String?   @map("phone_number") @db.VarChar(20)
+  userType        String    @map("user_type") @db.VarChar(50)
+  latitude        Float?    @db.DoublePrecision
+  longitude       Float?    @db.DoublePrecision
+  expoPushToken   String?   @map("expo_push_token") @db.VarChar(255)
+  supabaseUserId  String?   @map("supabase_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  ordersAsCustomer Order[]   @relation("CustomerOrders")
+  ordersAsProvider Order[]   @relation("ProviderOrders")
+  ordersAsCourier  Order[]   @relation("CourierOrders")
+  inventory        InventoryItem[]
+  locations        Location[]
+  cylinderPricing  CylinderPricing[]
+
+  @@map("users")
+}
+
+// Orders table
+model Order {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  providerId        String?   @map("provider_id") @db.Uuid
+  courierId         String?   @map("courier_id") @db.Uuid
+  status            String    @db.VarChar(50)
+  cylinderType      String    @map("cylinder_type") @db.VarChar(50)
+  quantity          Int
+  pricePerUnit      Float     @map("price_per_unit") @db.DoublePrecision
+  totalPrice        Float     @map("total_price") @db.DoublePrecision
+  deliveryFee       Float     @map("delivery_fee") @db.DoublePrecision
+  serviceCharge     Float     @map("service_charge") @db.DoublePrecision
+  grandTotal        Float     @map("grand_total") @db.DoublePrecision
+  deliveryAddress   String    @map("delivery_address") @db.Text
+  paymentMethod     String    @map("payment_method") @db.VarChar(50)
+  paymentStatus     String    @map("payment_status") @db.VarChar(50)
+  currentLatitude   Float?    @map("current_latitude") @db.DoublePrecision
+  currentLongitude  Float?    @map("current_longitude") @db.DoublePrecision
+  currentAddress    String?   @map("current_address") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  customer          User      @relation("CustomerOrders", fields: [userId], references: [id], onDelete: Cascade)
+  provider          User?     @relation("ProviderOrders", fields: [providerId], references: [id], onDelete: SetNull)
+  courier           User?     @relation("CourierOrders", fields: [courierId], references: [id], onDelete: SetNull)
+  payments          Payment[]
+
+  @@index([userId])
+  @@index([providerId])
+  @@index([courierId])
+  @@index([status])
+  @@map("orders")
+}
+
+// Inventory table
+model InventoryItem {
+  id           String   @id @default(uuid()) @db.Uuid
+  providerId   String   @map("provider_id") @db.Uuid
+  cylinderType String   @map("cylinder_type") @db.VarChar(50)
+  quantity     Int
+  price        Float    @db.DoublePrecision
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  provider     User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+  @@index([cylinderType])
+  @@map("inventory")
+}
+
+// Locations table (courier tracking)
+model Location {
+  id         String   @id @default(uuid()) @db.Uuid
+  courierId  String   @map("courier_id") @db.Uuid
+  latitude   Float    @db.DoublePrecision
+  longitude  Float    @db.DoublePrecision
+  streetName String   @map("street_name") @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  courier    User     @relation(fields: [courierId], references: [id], onDelete: Cascade)
+
+  @@index([courierId])
+  @@map("locations")
+}
+
+// Payments table
+model Payment {
+  id               String   @id @default(uuid()) @db.Uuid
+  orderId          String   @map("order_id") @db.Uuid
+  depositId        String   @unique @map("deposit_id") @db.VarChar(255)
+  amount           Float    @db.DoublePrecision
+  currency         String   @db.VarChar(10)
+  status           String   @db.VarChar(50)
+  correspondentIds String[] @map("correspondent_ids")
+  payerName        String?  @map("payer_name") @db.VarChar(255)
+  payerMsisdn      String?  @map("payer_msisdn") @db.VarChar(50)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([depositId])
+  @@map("payments")
+}
+
+// Cylinder Pricing table
+model CylinderPricing {
+  id           String   @id @default(uuid()) @db.Uuid
+  providerId   String   @map("provider_id") @db.Uuid
+  cylinderType String   @map("cylinder_type") @db.VarChar(50)
+  price        Float    @db.DoublePrecision
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  provider     User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, cylinderType])
+  @@index([providerId])
+  @@map("cylinder_pricing")
+}

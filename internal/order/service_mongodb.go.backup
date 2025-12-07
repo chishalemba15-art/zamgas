@@ -1,0 +1,357 @@
+package order
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/yakumwamba/lpg-delivery-system/internal/location"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+type Service struct {
+	Collection *mongo.Collection
+}
+
+func NewService(db *mongo.Database) *Service {
+	return &Service{
+		Collection: db.Collection("orders"),
+	}
+}
+
+func (s *Service) CreateOrder(order *Order, db *mongo.Database) (*Order, error) {
+	// Validate order
+	if err := s.validateOrder(order); err != nil {
+		return nil, fmt.Errorf("invalid order: %v", err)
+	}
+
+	// Insert into database
+	result, err := db.Collection("orders").InsertOne(context.Background(), order)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert order: %v", err)
+	}
+
+	order.ID = result.InsertedID.(primitive.ObjectID)
+
+	return order, nil
+}
+
+func (s *Service) validateOrder(order *Order) error {
+	if order.UserID.IsZero() {
+		return errors.New("user ID is required")
+	}
+	if order.ProviderID.IsZero() {
+		return errors.New("provider ID is required")
+	}
+	if order.CylinderType == "" {
+		return errors.New("cylinder type is required")
+	}
+	if order.Quantity <= 0 {
+		return errors.New("quantity must be greater than 0")
+	}
+	if order.PricePerUnit <= 0 {
+		return errors.New("price per unit must be greater than 0")
+	}
+	if order.GrandTotal <= 0 {
+		return errors.New("grand total must be greater than 0")
+	}
+
+	return nil
+}
+
+func (s *Service) GetUserOrders(userID primitive.ObjectID) ([]Order, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var orders []Order
+	cursor, err := s.Collection.Find(ctx, bson.M{"user_id": userID})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var order Order
+		if err := cursor.Decode(&order); err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+func (s *Service) GetAllProviders(db *mongo.Database) ([]primitive.ObjectID, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var providers []struct {
+		ID primitive.ObjectID `bson:"_id"`
+	}
+
+	cursor, err := db.Collection("users").Find(ctx, bson.M{"user_type": "provider"})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	if err = cursor.All(ctx, &providers); err != nil {
+		return nil, err
+	}
+
+	providerIDs := make([]primitive.ObjectID, len(providers))
+	for i, provider := range providers {
+		providerIDs[i] = provider.ID
+	}
+
+	return providerIDs, nil
+}
+
+func (s *Service) GetProviderOrders(providerID primitive.ObjectID) ([]Order, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var orders []Order
+	cursor, err := s.Collection.Find(ctx, bson.M{"provider_id": providerID})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	if err = cursor.All(ctx, &orders); err != nil {
+		return nil, err
+	}
+
+	return orders, nil
+}
+
+func (s *Service) AcceptOrder(providerID primitive.ObjectID, orderID primitive.ObjectID) error {
+	if orderID == primitive.NilObjectID {
+		return fmt.Errorf("cannot accept order with empty ID")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	filter := bson.M{"_id": orderID, "status": OrderStatusPending}
+	update := bson.M{
+		"$set": bson.M{
+			"status":      OrderStatusAccepted,
+			"provider_id": providerID,
+			"updated_at":  time.Now(),
+		},
+	}
+
+	result, err := s.Collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("failed to update order: %w", err)
+	}
+
+	if result.ModifiedCount == 0 {
+		return fmt.Errorf("order not found or already accepted")
+	}
+
+	return nil
+}
+
+func (s *Service) RejectOrder(orderID primitive.ObjectID) error {
+	return s.updateOrderStatus(orderID, OrderStatusRejected)
+}
+
+func (s *Service) GetCourierOrders(courierID primitive.ObjectID) ([]Order, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var orders []Order
+	cursor, err := s.Collection.Find(ctx, bson.M{"courier_id": courierID})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	if err = cursor.All(ctx, &orders); err != nil {
+		return nil, err
+	}
+
+	return orders, nil
+}
+
+func (s *Service) UpdateOrderStatus(orderID primitive.ObjectID, status OrderStatus, courierID primitive.ObjectID) error {
+	return s.updateOrderStatus(orderID, status)
+}
+
+func (s *Service) GetOrderByID(orderID primitive.ObjectID) (*Order, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var order Order
+	err := s.Collection.FindOne(ctx, bson.M{"_id": orderID}).Decode(&order)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, fmt.Errorf("order not found")
+		}
+		return nil, err
+	}
+
+	return &order, nil
+}
+
+// Helper function to update order status
+func (s *Service) updateOrderStatus(orderID primitive.ObjectID, status OrderStatus) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	filter := bson.M{"_id": orderID}
+	update := bson.M{
+		"$set": bson.M{
+			"payment_status": status,
+			"updated_at":     time.Now(),
+		},
+	}
+
+	result, err := s.Collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.ModifiedCount == 0 {
+		return fmt.Errorf("order not found or status not changed")
+	}
+
+	return nil
+}
+
+func (s *Service) UpdateOrderPaymentStatus(orderID primitive.ObjectID, status PaymentStatus) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	filter := bson.M{"_id": orderID}
+	update := bson.M{
+		"$set": bson.M{
+			"payment_status": status,
+			"updated_at":     time.Now(),
+		},
+	}
+
+	_, err := s.Collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
+// func StringToOrderStatus(s string) (OrderStatus, error) {
+// 	switch OrderStatus(s) {
+// 	case OrderStatusPending, OrderStatusAccepted, OrderStatusRejected, OrderStatusDelivered:
+// 		return OrderStatus(s), nil
+// 	default:
+// 		return "", fmt.Errorf("invalid order status")
+// 	}
+// }
+
+// func (s *Service) UpdateOrderLocation(orderID, courierID primitive.ObjectID, location *location.Location) error {
+// 	filter := bson.M{"_id": orderID, "courier_id": courierID}
+// 	update := bson.M{"$set": bson.M{"current_location": location}}
+
+// 	result, err := s.Collection.UpdateOne(context.Background(), filter, update)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	if result.ModifiedCount == 0 {
+// 		return fmt.Errorf("no order found with ID %s and courier ID %s", orderID.Hex(), courierID.Hex())
+// 	}
+
+// 	return nil
+// }
+
+func (s *Service) UpdateOrderLocation(orderID primitive.ObjectID, location *location.Location) error {
+	filter := bson.M{"_id": orderID}
+	update := bson.M{"$set": bson.M{"current_location": location}}
+
+	_, err := s.Collection.UpdateOne(context.Background(), filter, update)
+	return err
+}
+
+type UserType string
+
+const (
+	UserTypeCustomer UserType = "customer"
+	UserTypeProvider UserType = "provider"
+	UserTypeCourier  UserType = "courier"
+)
+
+type ProviderInfo struct {
+	ID       primitive.ObjectID `bson:"_id"`
+	Location struct {
+		Latitude  float64 `bson:"latitude"`
+		Longitude float64 `bson:"longitude"`
+	} `bson:"location"`
+	Rating  int    `bson:"rating"`
+	Name    string `bson:"name"`
+	Address string `bson:"address"`
+}
+
+type User struct {
+	ID          primitive.ObjectID `bson:"_id,omitempty"`
+	Password    string             `bson:"password"`
+	Email       string             `bson:"email"`
+	Name        string             `bson:"name"`
+	PhoneNumber string             `bson:"phone_number"`
+	Rating      int                `bson:"rating"`
+	UserType    UserType           `bson:"user_type"`
+	Location    Location           `bson:"location,omitempty"`
+	CreatedAt   primitive.DateTime `bson:"created_at"`
+	UpdatedAt   primitive.DateTime `bson:"updated_at"`
+	Token       string             `json:"token"`
+}
+
+func (s *Service) GetBestProviderForUser(userID primitive.ObjectID, latitude float64, longitude float64) (*primitive.ObjectID, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var bestProvider struct {
+		ID     primitive.ObjectID `bson:"provider_id"`
+		Rating int                `bson:"rating"`
+	}
+
+	cursor, err := s.Collection.Aggregate(ctx, bson.M{"$match": bson.M{"user_id": userID}})
+	if err != nil {
+		return nil, fmt.Errorf("failed to aggregate collections: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var provider ProviderInfo
+		err := cursor.Decode(&provider)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode provider: %w", err)
+		}
+
+		// Join with users collection to get user rating
+		userResult := s.Collection.FindOne(ctx, bson.M{"_id": provider.ID})
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				continue // Skip providers without associated users
+			}
+			return nil, fmt.Errorf("failed to find user for provider: %w", err)
+		}
+
+		var user User
+		err = userResult.Decode(&user)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode user: %w", err)
+		}
+
+		// Store the best provider found so far
+		if bestProvider.Rating < user.Rating || bestProvider.ID.IsZero() {
+			bestProvider.ID = provider.ID
+			bestProvider.Rating = user.Rating
+		}
+	}
+
+	// Return the best provider based on the highest user rating
+	if bestProvider.ID.IsZero() {
+		return nil, fmt.Errorf("no providers found for user")
+	}
+
+	return &bestProvider.ID, nil
+}

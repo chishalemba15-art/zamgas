@@ -1,0 +1,64 @@
+# Git files
+.git
+.gitignore
+.github
+
+# Documentation
+README.md
+*.md
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+main
+tmp/
+
+# Test files
+*_test.go
+test/
+coverage.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Database files
+*.db
+*.sqlite
+data/
+
+# Dependencies (will be downloaded during build)
+vendor/
+
+# MongoDB directory
+mongodb/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+.DS_Store
+Thumbs.db
+
+# Frontend (Not needed for backend build)
+frontend/
