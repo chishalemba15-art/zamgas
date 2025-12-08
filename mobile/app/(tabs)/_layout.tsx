@@ -1,9 +1,16 @@
 import { Tabs } from 'expo-router'
-import { View, StyleSheet } from 'react-native'
+import { View, StyleSheet, Platform } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Zap, Package, User, MessageCircle } from 'lucide-react-native'
 import { zamgasTheme } from '@/lib/theme'
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets()
+  
+  // Calculate proper bottom padding for Android nav bar
+  const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 10) : insets.bottom
+  const tabBarHeight = 60 + bottomPadding
+
   return (
     <Tabs
       screenOptions={{
@@ -14,9 +21,9 @@ export default function TabLayout() {
           backgroundColor: zamgasTheme.colors.premium.burgundy,
           borderTopColor: zamgasTheme.colors.premium.burgundyLight,
           borderTopWidth: 1,
-          height: 80,
-          paddingBottom: 20,
-          paddingTop: 10,
+          height: tabBarHeight,
+          paddingBottom: bottomPadding,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -31,7 +38,7 @@ export default function TabLayout() {
           title: 'Order Gas',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <Zap size={22} color={color} fill={focused ? color : 'transparent'} />
+              <Zap size={20} color={color} fill={focused ? color : 'transparent'} />
             </View>
           ),
         }}
@@ -42,7 +49,7 @@ export default function TabLayout() {
           title: 'My Orders',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <Package size={22} color={color} />
+              <Package size={20} color={color} />
             </View>
           ),
         }}
@@ -53,7 +60,7 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <User size={22} color={color} />
+              <User size={20} color={color} />
             </View>
           ),
         }}
@@ -64,7 +71,7 @@ export default function TabLayout() {
           title: 'Help',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <MessageCircle size={22} color={color} />
+              <MessageCircle size={20} color={color} />
             </View>
           ),
         }}
@@ -75,9 +82,9 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   iconContainer: {
-    width: 40,
-    height: 28,
-    borderRadius: 14,
+    width: 36,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
   },
