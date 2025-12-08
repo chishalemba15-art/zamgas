@@ -432,28 +432,28 @@ export default function DashboardScreen() {
           showsMyLocationButton={false}
           customMapStyle={darkMapStyle}
         >
-          {/* User Location Marker with pulse */}
+          {/* User Location Marker with pulse - downsized */}
           {userLocation && (
             <>
               <Circle
                 center={userLocation}
-                radius={200}
-                fillColor={`${zamgasTheme.colors.premium.gold}15`}
-                strokeColor={`${zamgasTheme.colors.premium.gold}40`}
+                radius={150}
+                fillColor={`${zamgasTheme.colors.premium.gold}10`}
+                strokeColor={`${zamgasTheme.colors.premium.gold}30`}
                 strokeWidth={1}
               />
-              <Marker coordinate={userLocation}>
+              <Marker coordinate={userLocation} anchor={{ x: 0.5, y: 0.5 }}>
                 <View style={styles.userMarkerContainer}>
                   <Animated.View style={[styles.userMarkerPulse, { transform: [{ scale: pulseAnim }] }]} />
                   <View style={styles.userMarkerInner}>
-                    <User size={14} color="white" />
+                    <User size={10} color="white" />
                   </View>
                 </View>
               </Marker>
             </>
           )}
 
-          {/* Provider Markers with animation */}
+          {/* Provider Markers with app icon logo */}
           {providers.slice(0, 5).map((provider, index) => (
             provider.latitude && provider.longitude && (
               <Marker
@@ -463,6 +463,7 @@ export default function DashboardScreen() {
                   longitude: provider.longitude,
                 }}
                 onPress={() => setSelectedProvider(provider)}
+                anchor={{ x: 0.5, y: 0.5 }}
               >
                 <Animated.View 
                   style={[
@@ -479,12 +480,16 @@ export default function DashboardScreen() {
                     styles.providerMarkerInner,
                     selectedProvider?.id === provider.id && styles.providerMarkerInnerSelected,
                   ]}>
-                    <Zap 
-                      size={12} 
-                      color={selectedProvider?.id === provider.id ? zamgasTheme.colors.premium.burgundy : 'white'} 
-                      fill={selectedProvider?.id === provider.id ? zamgasTheme.colors.premium.burgundy : 'transparent'}
+                    <Image 
+                      source={require('@/assets/images/icon.png')} 
+                      style={styles.providerMarkerIcon}
                     />
                   </View>
+                  {selectedProvider?.id === provider.id && (
+                    <View style={styles.providerMarkerLabel}>
+                      <Text style={styles.providerMarkerLabelText}>Selected</Text>
+                    </View>
+                  )}
                 </Animated.View>
               </Marker>
             )
@@ -818,53 +823,69 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
 
-  // User Marker
+  // User Marker - downsized
   userMarkerContainer: {
-    width: 44,
-    height: 44,
+    width: 32,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
   userMarkerPulse: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: `${zamgasTheme.colors.premium.gold}30`,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: `${zamgasTheme.colors.premium.gold}35`,
   },
   userMarkerInner: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: zamgasTheme.colors.premium.gold,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'white',
-  },
-
-  // Provider Markers
-  providerMarkerOuter: {
-    width: 36,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  providerMarkerSelected: {
-    transform: [{ scale: 1.2 }],
-  },
-  providerMarkerInner: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: zamgasTheme.colors.premium.red,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'white',
   },
+
+  // Provider Markers with app icon
+  providerMarkerOuter: {
+    alignItems: 'center',
+  },
+  providerMarkerSelected: {
+    transform: [{ scale: 1.15 }],
+  },
+  providerMarkerInner: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: zamgasTheme.colors.premium.red,
+    overflow: 'hidden',
+  },
   providerMarkerInnerSelected: {
+    borderColor: zamgasTheme.colors.premium.gold,
+    borderWidth: 3,
+  },
+  providerMarkerIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 4,
+  },
+  providerMarkerLabel: {
     backgroundColor: zamgasTheme.colors.premium.gold,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 2,
+  },
+  providerMarkerLabelText: {
+    color: zamgasTheme.colors.premium.burgundy,
+    fontSize: 8,
+    fontWeight: '700',
   },
   
   activeOrderBanner: {
