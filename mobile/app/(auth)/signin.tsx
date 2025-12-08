@@ -58,29 +58,45 @@ export default function SignInScreen() {
       const result = await googleSignIn()
       
       if (result?.type === 'success') {
-        // The useGoogleAuth hook will handle getting the user info
-        // Now we need to authenticate with our backend
         const authentication = result.authentication
         
-        if (authentication?.idToken) {
-          // Send the Google ID token to your backend
-          const response = await fetch(`${API_URL}/auth/google/mobile`, {
+        if (authentication?.accessToken) {
+          // First, get user info from Google directly
+          const googleUserResponse = await fetch(
+            'https://www.googleapis.com/userinfo/v2/me',
+            {
+              headers: { Authorization: `Bearer ${authentication.accessToken}` },
+            }
+          )
+          const googleUser = await googleUserResponse.json()
+
+          if (!googleUser.email) {
+            Alert.alert('Error', 'Could not get email from Google')
+            return
+          }
+
+          // Send to backend to create/login user
+          const response = await fetch(`${API_URL}/auth/google/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              id_token: authentication.idToken,
-              access_token: authentication.accessToken,
+              email: googleUser.email,
+              name: googleUser.name || googleUser.email.split('@')[0],
+              picture: googleUser.picture,
+              user_type: 'customer',
             }),
           })
 
           const data = await response.json()
 
-          if (response.ok && data.token && data.user) {
+          if (response.ok && data.token) {
             await setAuth(data.user, data.token)
             router.replace('/(tabs)')
           } else {
             Alert.alert('Error', data.error || 'Failed to authenticate with Google')
           }
+        } else {
+          Alert.alert('Error', 'No access token received from Google')
         }
       }
     } catch (error: any) {
