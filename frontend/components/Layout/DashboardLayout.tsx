@@ -2,7 +2,8 @@
 
 import { ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { Flame, User, LogOut, Bell } from 'lucide-react'
+import Image from 'next/image'
+import { User, LogOut, Bell } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { authAPI } from '@/lib/api'
 import { BottomNavigation } from './BottomNavigation'
@@ -55,13 +56,18 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
               onClick={() => router.push('/')}
             >
               <div 
-                className="rounded-xl p-2.5 transition-all duration-300 group-hover:scale-105"
+                className="rounded-xl overflow-hidden transition-all duration-300 group-hover:scale-105"
                 style={{ 
-                  background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
                   boxShadow: `0 4px 12px ${zamgasTheme.colors.premium.red}40`
                 }}
               >
-                <Flame className="h-6 w-6 text-white" />
+                <Image 
+                  src="/app-icon.png" 
+                  alt="ZAMGAS Logo" 
+                  width={44} 
+                  height={44}
+                  className="object-cover"
+                />
               </div>
               <span 
                 className="text-xl font-bold tracking-tight"
