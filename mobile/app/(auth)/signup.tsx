@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native'
 import { router } from 'expo-router'
 import { Zap, Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react-native'
@@ -73,9 +74,10 @@ export default function SignUpScreen() {
       >
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Zap size={40} color={zamgasTheme.colors.premium.burgundy} />
-          </View>
+          <Image 
+            source={require('@/assets/images/icon.png')} 
+            style={styles.logoImage}
+          />
           <Text style={styles.logoText}>ZAMGAS</Text>
         </View>
 
@@ -204,6 +206,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: zamgasTheme.spacing.sm,
     ...zamgasTheme.shadows.gold,
+  },
+  logoImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    marginBottom: zamgasTheme.spacing.sm,
   },
   logoText: {
     fontSize: zamgasTheme.typography.sizes['2xl'],

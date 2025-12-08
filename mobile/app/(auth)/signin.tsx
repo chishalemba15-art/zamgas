@@ -116,9 +116,10 @@ export default function SignInScreen() {
       >
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Zap size={48} color={zamgasTheme.colors.premium.burgundy} />
-          </View>
+          <Image 
+            source={require('@/assets/images/icon.png')} 
+            style={styles.logoImage}
+          />
           <Text style={styles.logoText}>ZAMGAS</Text>
           <Text style={styles.tagline}>Order LPG gas in 60 seconds</Text>
         </View>
@@ -250,6 +251,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: zamgasTheme.spacing.md,
     ...zamgasTheme.shadows.gold,
+  },
+  logoImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 24,
+    marginBottom: zamgasTheme.spacing.md,
   },
   logoText: {
     fontSize: zamgasTheme.typography.sizes['3xl'],
