@@ -50,19 +50,26 @@ export default function Home() {
   const [loadingProgress, setLoadingProgress] = useState(0)
   const visibleSections = useScrollAnimation()
 
-  // Loading screen effect
+  // Loading screen effect - fast and reliable
   useEffect(() => {
+    // Fallback: Always hide loading after 1.5 seconds max
+    const fallback = setTimeout(() => setIsLoading(false), 1500)
+    
     const timer = setInterval(() => {
       setLoadingProgress(prev => {
         if (prev >= 100) {
           clearInterval(timer)
-          setTimeout(() => setIsLoading(false), 300)
+          setIsLoading(false)
           return 100
         }
-        return prev + 20
+        return prev + 25 // Faster progress
       })
-    }, 150)
-    return () => clearInterval(timer)
+    }, 100) // Faster interval
+    
+    return () => {
+      clearInterval(timer)
+      clearTimeout(fallback)
+    }
   }, [])
 
   useEffect(() => {
@@ -110,13 +117,14 @@ export default function Home() {
     { value: "< 3hrs", label: "Average Delivery" },
   ]
 
-  // Animation helper
+  // Animation helper - content is always visible, animation is enhancement only
   const getAnimationClass = (sectionId: string, delay: number = 0) => {
     const isVisible = visibleSections.has(sectionId)
+    // Always visible, but with subtle transform when first appearing
     return {
-      opacity: isVisible ? 1 : 0,
-      transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
-      transition: `all 0.6s ease-out ${delay}ms`,
+      opacity: 1,
+      transform: isVisible ? 'translateY(0)' : 'translateY(10px)',
+      transition: `transform 0.5s ease-out ${delay}ms`,
     }
   }
 
