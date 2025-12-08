@@ -37,8 +37,9 @@ import { useAuthStore } from '@/lib/authStore'
 import { providerAPI, orderAPI, preferencesAPI, userAPI, Provider, Order } from '@/lib/api'
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window')
-const MAP_HEIGHT = SCREEN_HEIGHT * 0.48
-const BOTTOM_SHEET_HEIGHT = SCREEN_HEIGHT * 0.54
+const TAB_BAR_HEIGHT = 80 // Match tab bar height
+const MAP_HEIGHT = SCREEN_HEIGHT * 0.44
+const BOTTOM_SHEET_HEIGHT = SCREEN_HEIGHT - MAP_HEIGHT - TAB_BAR_HEIGHT
 
 // Cylinder sizes
 const CYLINDER_SIZES = [
@@ -966,16 +967,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Bottom Sheet
+  // Bottom Sheet - uses flex instead of absolute
   bottomSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: BOTTOM_SHEET_HEIGHT,
+    flex: 1,
     backgroundColor: zamgasTheme.colors.premium.burgundyDark,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    marginTop: -20, // Overlap slightly with map for visual effect
   },
   handleBar: {
     width: 36,
