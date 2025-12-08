@@ -47,6 +47,18 @@ const CYLINDER_TYPES = [
 // Quick order cylinder sizes
 const QUICK_ORDER_SIZES = ['6KG', '9KG', '13KG', '19KG']
 
+// Cylinder prices mapping (in Kwacha)
+const CYLINDER_PRICES: Record<string, number> = {
+  '3KG': 45,
+  '5KG': 75,
+  '6KG': 85,
+  '9KG': 120,
+  '12KG': 150,
+  '13KG': 180,
+  '19KG': 290,
+  '48KG': 650,
+}
+
 export default function CustomerDashboard() {
   const router = useRouter()
   const { user } = useAuthStore()
@@ -76,9 +88,16 @@ export default function CustomerDashboard() {
   })
 
   useEffect(() => {
+    // Load saved cylinder preference
     const savedCylinder = localStorage.getItem('preferredCylinder')
     if (savedCylinder) {
       setOrderForm(prev => ({ ...prev, cylinder_type: savedCylinder }))
+    }
+    
+    // Load saved delivery address
+    const savedAddress = localStorage.getItem('savedDeliveryAddress')
+    if (savedAddress) {
+      setOrderForm(prev => ({ ...prev, delivery_address: savedAddress }))
     }
     
     // Handle Google OAuth callback - capture token from URL hash
@@ -574,17 +593,17 @@ export default function CustomerDashboard() {
           })()
         )}
 
-        {/* Hero Section - ZamGas Branded */}
+        {/* Hero Section - Premium Dark Theme */}
         <div
           className="relative -mx-6 -mt-6 mb-6 p-5 sm:p-8 pb-8 sm:pb-10 rounded-b-3xl overflow-hidden"
           style={{
-            background: zamgasTheme.gradients.primary,
-            boxShadow: zamgasTheme.shadows.large,
+            background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.burgundy} 0%, ${zamgasTheme.colors.premium.burgundyDark} 100%)`,
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
           }}
         >
           {/* Pattern overlay */}
-          <div className="absolute inset-0 opacity-5" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 20 L35 30 L30 40 L25 30 Z M20 30 L30 25 L40 30 L30 35 Z' fill='white' fill-opacity='1'/%3E%3C/svg%3E")`,
+          <div className="absolute inset-0 opacity-10" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 20 L35 30 L30 40 L25 30 Z M20 30 L30 25 L40 30 L30 35 Z' fill='%23FBC609' fill-opacity='0.5'/%3E%3C/svg%3E")`,
             backgroundSize: '40px 40px'
           }} />
 
@@ -595,18 +614,24 @@ export default function CustomerDashboard() {
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{
-                      background: 'rgba(255, 255, 255, 0.2)',
-                      backdropFilter: 'blur(10px)',
+                      background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
+                      boxShadow: `0 4px 12px ${zamgasTheme.colors.premium.red}40`,
                     }}
                   >
                     <Zap className="h-5 w-5" />
                   </div>
-                  <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: zamgasTheme.typography.fontFamily.display }}>
-                    Clean Cooking Energy
+                  <h1 className="text-2xl sm:text-3xl font-bold" style={{ 
+                    fontFamily: zamgasTheme.typography.fontFamily.display,
+                    color: zamgasTheme.colors.premium.gold
+                  }}>
+                    Order Gas Now
                   </h1>
                 </div>
-                <p className="text-sm sm:text-base text-white/90" style={{ fontFamily: zamgasTheme.typography.fontFamily.body }}>
-                  LPG delivery made simple and sustainable
+                <p className="text-sm sm:text-base" style={{ 
+                  fontFamily: zamgasTheme.typography.fontFamily.body,
+                  color: zamgasTheme.colors.premium.gray 
+                }}>
+                  Fast delivery to your doorstep
                 </p>
               </div>
               <CleanEnergyBadge variant="inline" />
@@ -617,52 +642,71 @@ export default function CustomerDashboard() {
               <div
                 className="p-3 rounded-xl text-center"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  backdropFilter: 'blur(10px)',
+                  background: `${zamgasTheme.colors.premium.burgundyLight}`,
+                  border: `1px solid ${zamgasTheme.colors.premium.gray}30`,
                 }}
               >
-                <p className="text-2xl font-bold mb-0.5" style={{ fontFamily: zamgasTheme.typography.fontFamily.display }}>
+                <p className="text-2xl font-bold mb-0.5" style={{ 
+                  fontFamily: zamgasTheme.typography.fontFamily.display,
+                  color: zamgasTheme.colors.premium.gold 
+                }}>
                   50%
                 </p>
-                <p className="text-xs opacity-90">Less CO₂</p>
+                <p className="text-xs" style={{ color: zamgasTheme.colors.premium.gray }}>Less CO₂</p>
               </div>
               <div
                 className="p-3 rounded-xl text-center"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  backdropFilter: 'blur(10px)',
+                  background: `${zamgasTheme.colors.premium.burgundyLight}`,
+                  border: `1px solid ${zamgasTheme.colors.premium.gray}30`,
                 }}
               >
-                <p className="text-2xl font-bold mb-0.5" style={{ fontFamily: zamgasTheme.typography.fontFamily.display }}>
+                <p className="text-2xl font-bold mb-0.5" style={{ 
+                  fontFamily: zamgasTheme.typography.fontFamily.display,
+                  color: zamgasTheme.colors.premium.gold 
+                }}>
                   95%
                 </p>
-                <p className="text-xs opacity-90">Cleaner Air</p>
+                <p className="text-xs" style={{ color: zamgasTheme.colors.premium.gray }}>Cleaner Air</p>
               </div>
               <div
                 className="p-3 rounded-xl text-center"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  backdropFilter: 'blur(10px)',
+                  background: `${zamgasTheme.colors.premium.burgundyLight}`,
+                  border: `1px solid ${zamgasTheme.colors.premium.gray}30`,
                 }}
               >
-                <p className="text-2xl font-bold mb-0.5" style={{ fontFamily: zamgasTheme.typography.fontFamily.display }}>
+                <p className="text-2xl font-bold mb-0.5" style={{ 
+                  fontFamily: zamgasTheme.typography.fontFamily.display,
+                  color: zamgasTheme.colors.premium.gold 
+                }}>
                   3x
                 </p>
-                <p className="text-xs opacity-90">Efficient</p>
+                <p className="text-xs" style={{ color: zamgasTheme.colors.premium.gray }}>Efficient</p>
               </div>
             </div>
 
-            {/* Location Display */}
+            {/* Location Display - Editable */}
             {userLocation && (
               <div
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium mt-4"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium mt-4 cursor-pointer hover:opacity-90 transition-opacity"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  backdropFilter: 'blur(10px)',
+                  background: zamgasTheme.colors.premium.burgundyLight,
+                  border: `1px solid ${zamgasTheme.colors.premium.gold}50`,
+                }}
+                onClick={() => {
+                  const newAddress = prompt('Enter your delivery address:', orderForm.delivery_address)
+                  if (newAddress) {
+                    setOrderForm(prev => ({ ...prev, delivery_address: newAddress }))
+                    localStorage.setItem('savedDeliveryAddress', newAddress)
+                    toast.success('Address updated!')
+                  }
                 }}
               >
-                <MapPin className="h-3.5 w-3.5" />
-                <span>Serving your location</span>
+                <MapPin className="h-3.5 w-3.5" style={{ color: zamgasTheme.colors.premium.gold }} />
+                <span style={{ color: zamgasTheme.colors.premium.gray }}>
+                  {orderForm.delivery_address || 'Set delivery address →'}
+                </span>
               </div>
             )}
           </div>
@@ -673,10 +717,10 @@ export default function CustomerDashboard() {
           <EcoImpactCard variant="compact" />
         </div>
 
-      {/* Quick Order Cards - Clean Energy Design */}
+      {/* Quick Order Cards - Premium Dark Theme */}
       <div className="mb-6">
         <h2 className="text-lg sm:text-xl font-bold mb-4" style={{
-          color: zamgasTheme.colors.semantic.textPrimary,
+          color: '#FFFFFF',
           fontFamily: zamgasTheme.typography.fontFamily.display,
         }}>
           Quick Order
@@ -686,33 +730,43 @@ export default function CustomerDashboard() {
             <div
               key={size}
               onClick={() => handleQuickOrderSelect(size)}
-              className={`relative p-4 sm:p-5 rounded-2xl cursor-pointer transition-all duration-300 active:scale-95 sm:hover:scale-[1.03] sm:hover:-translate-y-1 ${
-                orderForm.cylinder_type === size ? 'ring-2 ring-offset-2' : ''
-              }`}
+              className={`relative p-4 sm:p-5 rounded-2xl cursor-pointer transition-all duration-300 active:scale-95 sm:hover:scale-[1.03] sm:hover:-translate-y-1`}
               style={{
-                background: orderForm.cylinder_type === size ? zamgasTheme.gradients.primary : zamgasTheme.colors.semantic.cardBg,
-                boxShadow: orderForm.cylinder_type === size ? 
-                  `${zamgasTheme.shadows.hover}, 0 0 0 2px white, 0 0 0 4px ${zamgasTheme.colors.primary.forest}` : 
-                  zamgasTheme.shadows.small,
-                color: orderForm.cylinder_type === size ? 'white' : zamgasTheme.colors.semantic.textPrimary,
-                border: orderForm.cylinder_type === size ? 'none' : `2px solid ${zamgasTheme.colors.neutral[200]}`,
+                background: orderForm.cylinder_type === size 
+                  ? `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`
+                  : zamgasTheme.colors.premium.burgundy,
+                boxShadow: orderForm.cylinder_type === size 
+                  ? `0 8px 24px ${zamgasTheme.colors.premium.red}50`
+                  : '0 4px 12px rgba(0, 0, 0, 0.3)',
+                border: orderForm.cylinder_type === size 
+                  ? `2px solid ${zamgasTheme.colors.premium.gold}`
+                  : `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
               }}
             >
               <div className="flex flex-col items-center text-center">
-                <Zap className="h-7 sm:h-9 w-7 sm:w-9 mb-2 transition-transform duration-300" style={{ color: orderForm.cylinder_type === size ? 'white' : zamgasTheme.colors.secondary.amber }} />
-                <p className="font-bold text-base sm:text-lg" style={{ fontFamily: zamgasTheme.typography.fontFamily.display }}>{size}</p>
-                <p className="text-xs mt-1 opacity-80">Clean Energy</p>
+                <Zap 
+                  className="h-7 sm:h-9 w-7 sm:w-9 mb-2 transition-transform duration-300" 
+                  style={{ color: orderForm.cylinder_type === size ? 'white' : zamgasTheme.colors.premium.gold }} 
+                />
+                <p className="font-bold text-base sm:text-lg" style={{ 
+                  fontFamily: zamgasTheme.typography.fontFamily.display,
+                  color: orderForm.cylinder_type === size ? 'white' : zamgasTheme.colors.premium.gold
+                }}>{size}</p>
+                <p className="text-xs mt-1" style={{ 
+                  color: orderForm.cylinder_type === size ? 'rgba(255,255,255,0.8)' : zamgasTheme.colors.premium.gray 
+                }}>
+                  K{CYLINDER_PRICES[size]}
+                </p>
               </div>
               {preferences?.preferred_cylinder_type === size && (
                 <div
                   className="absolute top-2 sm:top-2.5 right-2 sm:right-2.5 px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-bold"
                   style={{
-                    background: zamgasTheme.colors.accent.teal,
-                    color: 'white',
-                    boxShadow: zamgasTheme.shadows.ecoGlow,
+                    background: zamgasTheme.colors.premium.gold,
+                    color: zamgasTheme.colors.premium.burgundy,
                   }}
                 >
-                  ✓
+                  ★
                 </div>
               )}
             </div>
@@ -723,50 +777,110 @@ export default function CustomerDashboard() {
 
       {/* Mobile-First Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Order Form */}
+        {/* Order Form - Premium Dark Theme */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-          <Card>
-            <CardHeader>
-              <h2 className="text-xl font-bold" style={{ 
-                color: zamgasTheme.colors.semantic.textPrimary,
-                fontFamily: zamgasTheme.typography.fontFamily.display,
-              }}>
-                Order Details
-              </h2>
-            </CardHeader>
-            <CardBody className="space-y-4">
-              <Select
-                label="Cylinder Type"
-                options={CYLINDER_TYPES}
-                value={orderForm.cylinder_type}
-                onChange={(e) => {
-                  const newType = e.target.value
-                  setOrderForm({ ...orderForm, cylinder_type: newType })
-                  preferencesAPI.updateCylinderType(newType).catch(() => {})
-                }}
-              />
+          <div 
+            className="rounded-2xl p-6 overflow-hidden"
+            style={{
+              background: zamgasTheme.colors.premium.burgundy,
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+              border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
+            }}
+          >
+            <h2 className="text-xl font-bold mb-6" style={{ 
+              color: zamgasTheme.colors.premium.gold,
+              fontFamily: zamgasTheme.typography.fontFamily.display,
+            }}>
+              Order Details
+            </h2>
+            <div className="space-y-4">
+              {/* Cylinder Type with Price */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: zamgasTheme.colors.premium.gray }}>
+                  Cylinder Type
+                </label>
+                <select
+                  value={orderForm.cylinder_type}
+                  onChange={(e) => {
+                    const newType = e.target.value
+                    setOrderForm({ ...orderForm, cylinder_type: newType })
+                    localStorage.setItem('preferredCylinder', newType)
+                    preferencesAPI.updateCylinderType(newType).catch(() => {})
+                  }}
+                  className="w-full px-4 py-3 rounded-xl transition-all duration-200 outline-none"
+                  style={{
+                    background: zamgasTheme.colors.premium.burgundyLight,
+                    border: `1px solid ${zamgasTheme.colors.premium.gray}50`,
+                    color: '#FFFFFF',
+                  }}
+                >
+                  {CYLINDER_TYPES.map(type => (
+                    <option key={type.value} value={type.value}>
+                      {type.label} - K{CYLINDER_PRICES[type.value]}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <Input
-                label="Quantity"
-                type="number"
-                min="1"
-                value={orderForm.quantity}
-                onChange={(e) =>
-                  setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })
-                }
-              />
+              {/* Quantity */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: zamgasTheme.colors.premium.gray }}>
+                  Quantity
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setOrderForm(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1) }))}
+                    className="w-12 h-12 rounded-xl font-bold text-xl transition-all hover:scale-105"
+                    style={{ 
+                      background: zamgasTheme.colors.premium.burgundyLight,
+                      color: zamgasTheme.colors.premium.gold,
+                      border: `1px solid ${zamgasTheme.colors.premium.gold}50`,
+                    }}
+                  >
+                    -
+                  </button>
+                  <span className="text-2xl font-bold w-12 text-center" style={{ color: '#FFFFFF' }}>
+                    {orderForm.quantity}
+                  </span>
+                  <button
+                    onClick={() => setOrderForm(prev => ({ ...prev, quantity: prev.quantity + 1 }))}
+                    className="w-12 h-12 rounded-xl font-bold text-xl transition-all hover:scale-105"
+                    style={{ 
+                      background: zamgasTheme.colors.premium.burgundyLight,
+                      color: zamgasTheme.colors.premium.gold,
+                      border: `1px solid ${zamgasTheme.colors.premium.gold}50`,
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
 
-              <Input
-                label="Delivery Address"
-                placeholder="Enter your delivery address"
-                value={orderForm.delivery_address}
-                onChange={(e) => setOrderForm({ ...orderForm, delivery_address: e.target.value })}
-                required
-              />
+              {/* Delivery Address */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: zamgasTheme.colors.premium.gray }}>
+                  Delivery Address
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your delivery address"
+                  value={orderForm.delivery_address}
+                  onChange={(e) => {
+                    setOrderForm({ ...orderForm, delivery_address: e.target.value })
+                    localStorage.setItem('savedDeliveryAddress', e.target.value)
+                  }}
+                  className="w-full px-4 py-3 rounded-xl transition-all duration-200 outline-none"
+                  style={{
+                    background: zamgasTheme.colors.premium.burgundyLight,
+                    border: `1px solid ${zamgasTheme.colors.premium.gray}50`,
+                    color: '#FFFFFF',
+                  }}
+                />
+              </div>
 
               {/* Payment Method Selection - Card Based */}
               <div>
-                <label className="block text-sm font-medium mb-3" style={{ color: zamgasTheme.colors.semantic.textPrimary }}>
+                <label className="block text-sm font-medium mb-3" style={{ color: zamgasTheme.colors.premium.gray }}>
                   Payment Method
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -898,10 +1012,10 @@ export default function CustomerDashboard() {
                       You'll receive a USSD prompt on this number
                     </p>
                   </div>
-                </div>
-              )}
-            </CardBody>
-          </Card>
+                  </div>
+                )}
+            </div>
+          </div>
 
           {/* Selected Provider Card with Map */}
           <Card>

@@ -7,6 +7,22 @@
 export const zamgasTheme = {
   // Clean Energy Color Palette - Sophisticated & Sustainable
   colors: {
+    // NEW: Premium Dark Theme Colors
+    premium: {
+      red: '#FD0101',           // Vibrant red - primary CTA
+      redLight: '#FF3333',      // Lighter red for hover
+      redDark: '#CC0000',       // Darker red
+      burgundy: '#260606',      // Dark burgundy - backgrounds/cards
+      burgundyLight: '#3A0A0A', // Slightly lighter burgundy
+      burgundyDark: '#1A0404',  // Near black burgundy
+      gold: '#FBC609',          // Golden yellow - accents/prices
+      goldLight: '#FDD64D',     // Lighter gold
+      goldDark: '#D9A800',      // Darker gold
+      gray: '#A6A6A6',          // Medium gray - secondary text
+      grayLight: '#C0C0C0',     // Light gray
+      grayDark: '#808080',      // Dark gray
+    },
+
     // Primary: Forest Green (Trust, Growth, Sustainability)
     primary: {
       forest: '#0B6E4F',        // Deep forest green - main brand
