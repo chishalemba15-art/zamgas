@@ -76,6 +76,7 @@ export default function CustomerDashboard() {
   const [userOrders, setUserOrders] = useState<Order[]>([])
   const [isSearchingProvider, setIsSearchingProvider] = useState(false)
   const [isImpactCollapsed, setIsImpactCollapsed] = useState(true)
+  const [showOrderSheet, setShowOrderSheet] = useState(false)
   const [mobileMoneyPhone, setMobileMoneyPhone] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [currentDepositId, setCurrentDepositId] = useState('')
@@ -1038,11 +1039,18 @@ export default function CustomerDashboard() {
             </div>
           </div>
 
-          {/* Selected Provider Card with Map */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <h2 className="text-xl font-bold" style={{ 
-                color: zamgasTheme.colors.semantic.textPrimary,
+          {/* Selected Provider Card - Compact on Mobile */}
+          <div 
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: zamgasTheme.colors.premium.burgundy,
+              border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
+            }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: `${zamgasTheme.colors.premium.gray}20` }}>
+              <h2 className="text-lg font-bold" style={{ 
+                color: zamgasTheme.colors.premium.gold,
                 fontFamily: zamgasTheme.typography.fontFamily.display,
               }}>
                 {userLocation ? 'Nearest Provider' : 'Your Provider'}
@@ -1050,156 +1058,114 @@ export default function CustomerDashboard() {
               {!isPremiumUser && (
                 <button
                   onClick={() => setShowPremiumModal(true)}
-                  className="flex items-center gap-1.5 text-sm font-semibold transition-all duration-200 hover:scale-105 active:scale-95"
+                  className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg transition-all"
                   style={{ 
-                    color: zamgasTheme.colors.secondary.amber,
-                    fontFamily: zamgasTheme.typography.fontFamily.display,
+                    color: zamgasTheme.colors.premium.gold,
+                    background: zamgasTheme.colors.premium.burgundyLight,
                   }}
                 >
-                  <Crown className="h-4 w-4" />
-                  <span>Explore More</span>
+                  <Crown className="h-3 w-3" />
+                  <span>More</span>
                 </button>
               )}
-            </CardHeader>
-            <CardBody>
+            </div>
+            
+            {/* Content */}
+            <div className="p-4">
               {isSearchingProvider ? (
                 <ProviderSearchingAnimation isSearching={isSearchingProvider} />
               ) : isLoading ? (
-                <div className="text-center py-8" style={{ color: zamgasTheme.colors.semantic.textSecondary }}>
+                <div className="text-center py-4" style={{ color: zamgasTheme.colors.premium.gray }}>
                   Loading...
                 </div>
               ) : !selectedProvider ? (
-                <div className="text-center py-8" style={{ color: zamgasTheme.colors.semantic.textSecondary }}>
+                <div className="text-center py-4" style={{ color: zamgasTheme.colors.premium.gray }}>
                   No provider available
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {/* Provider Card - Clean Energy Themed */}
-                  <div
-                    className="p-6 rounded-2xl relative overflow-hidden"
-                    style={{
-                      background: zamgasTheme.gradients.eco,
-                      boxShadow: zamgasTheme.shadows.large,
-                      color: 'white'
-                    }}
-                  >
-                    {/* Eco pattern */}
-                    <div className="absolute top-0 right-0 opacity-10" style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 10 C60 30, 70 40, 50 50 C30 40, 40 30, 50 10 Z M50 50 C60 60, 70 70, 50 90 C30 70, 40 60, 50 50 Z' fill='white'/%3E%3C/svg%3E")`,
-                      width: '200px',
-                      height: '200px'
-                    }} />
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: zamgasTheme.typography.fontFamily.display }}>
-                          {selectedProvider.name}
-                        </h3>
-                        <p className="text-sm opacity-90 mb-3" style={{ fontFamily: zamgasTheme.typography.fontFamily.body }}>
-                          {selectedProvider.phone_number}
-                        </p>
-
-                        {nearestProvider && (
-                          <div className="flex items-center gap-2 mb-3">
-                            <div
-                              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold"
-                              style={{ 
-                                background: 'rgba(255, 255, 255, 0.25)',
-                                backdropFilter: 'blur(10px)',
-                                boxShadow: zamgasTheme.shadows.innerGlow,
-                              }}
-                            >
-                              <Navigation className="h-4 w-4" />
-                              <span>{nearestProvider.distance.toFixed(1)} km away</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      {selectedProvider.rating && (
-                        <div
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold"
-                          style={{
-                            background: zamgasTheme.colors.secondary.amber,
-                            color: 'white',
-                            boxShadow: zamgasTheme.shadows.amberGlow,
-                          }}
-                        >
-                          <Star className="h-4 w-4 fill-current" />
-                          <span>{selectedProvider.rating}</span>
-                        </div>
-                      )}
+                <div className="space-y-3">
+                  {/* Provider Info - Compact */}
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${zamgasTheme.colors.premium.red}30` }}
+                    >
+                      <Zap className="h-6 w-6" style={{ color: zamgasTheme.colors.premium.gold }} />
                     </div>
-
-                    {/* Mini Map - Mobile Optimized */}
-                    {userLocation && selectedProvider.latitude && selectedProvider.longitude && (
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-base truncate" style={{ color: '#FFFFFF' }}>
+                        {selectedProvider.name}
+                      </h3>
+                      <div className="flex items-center gap-2 text-xs" style={{ color: zamgasTheme.colors.premium.gray }}>
+                        {nearestProvider && (
+                          <span className="flex items-center gap-1">
+                            <Navigation className="h-3 w-3" style={{ color: zamgasTheme.colors.premium.gold }} />
+                            {nearestProvider.distance.toFixed(1)} km
+                          </span>
+                        )}
+                        <span>•</span>
+                        <span>{selectedProvider.phone_number}</span>
+                      </div>
+                    </div>
+                    {selectedProvider.rating && (
                       <div
-                        className="relative w-full h-40 sm:h-48 rounded-xl overflow-hidden mb-3"
-                        style={{ background: 'rgba(255, 255, 255, 0.1)' }}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold"
+                        style={{
+                          background: zamgasTheme.colors.premium.gold,
+                          color: zamgasTheme.colors.premium.burgundy,
+                        }}
                       >
-                        <iframe
-                          width="100%"
-                          height="100%"
-                          frameBorder="0"
-                          style={{ border: 0 }}
-                          src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&origin=${userLocation.lat},${userLocation.lng}&destination=${selectedProvider.latitude},${selectedProvider.longitude}&zoom=13`}
-                          allowFullScreen
-                        />
+                        <Star className="h-3 w-3 fill-current" />
+                        <span>{selectedProvider.rating}</span>
                       </div>
                     )}
-
-                    <div className="flex items-center gap-2 text-sm opacity-90">
-                      <MapPin className="h-4 w-4" />
-                      <span className="line-clamp-1">
-                        {selectedProvider.latitude && selectedProvider.longitude
-                          ? `${selectedProvider.latitude.toFixed(4)}, ${selectedProvider.longitude.toFixed(4)}`
-                          : 'Location not available'}
-                      </span>
-                    </div>
                   </div>
 
-                  {/* Premium Upsell */}
+                  {/* Mini Map - Compact on mobile */}
+                  {userLocation && selectedProvider.latitude && selectedProvider.longitude && (
+                    <div
+                      className="relative w-full h-28 sm:h-40 rounded-xl overflow-hidden"
+                      style={{ background: zamgasTheme.colors.premium.burgundyLight }}
+                    >
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        frameBorder="0"
+                        style={{ border: 0 }}
+                        src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&origin=${userLocation.lat},${userLocation.lng}&destination=${selectedProvider.latitude},${selectedProvider.longitude}&zoom=13`}
+                        allowFullScreen
+                      />
+                    </div>
+                  )}
+
+                  {/* Premium Upsell - Compact */}
                   {!isPremiumUser && (
                     <button
                       onClick={() => setShowPremiumModal(true)}
-                      className="w-full p-5 rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98]"
+                      className="w-full p-3 rounded-xl flex items-center justify-between transition-all active:scale-[0.98]"
                       style={{
-                        background: zamgasTheme.gradients.accent,
-                        boxShadow: zamgasTheme.shadows.goldGlow,
+                        background: `${zamgasTheme.colors.premium.gold}20`,
+                        border: `1px solid ${zamgasTheme.colors.premium.gold}30`,
                       }}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300"
-                            style={{ background: 'rgba(139, 69, 19, 0.2)' }}
-                          >
-                            <Crown className="h-6 w-6" style={{ color: zamgasTheme.colors.trust.navy }} />
-                          </div>
-                          <div className="text-left">
-                            <p className="font-bold text-base" style={{ 
-                              color: zamgasTheme.colors.trust.navy,
-                              fontFamily: zamgasTheme.typography.fontFamily.display,
-                            }}>
-                              Unlock Premium
-                            </p>
-                            <p className="text-sm font-medium" style={{ color: zamgasTheme.colors.trust.navy, opacity: 0.8 }}>
-                              Choose from {providers.length} providers
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-sm font-bold px-4 py-2 rounded-full" style={{ 
-                          background: zamgasTheme.colors.trust.navy, 
-                          color: 'white',
-                          boxShadow: zamgasTheme.shadows.small,
-                        }}>
-                          View
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-4 w-4" style={{ color: zamgasTheme.colors.premium.gold }} />
+                        <span className="text-sm font-medium" style={{ color: zamgasTheme.colors.premium.gold }}>
+                          Explore {providers.length} providers
+                        </span>
                       </div>
+                      <span className="text-xs px-2 py-1 rounded-lg font-bold" style={{ 
+                        background: zamgasTheme.colors.premium.gold, 
+                        color: zamgasTheme.colors.premium.burgundy,
+                      }}>
+                        Premium
+                      </span>
                     </button>
                   )}
                 </div>
               )}
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Order Summary & Eco Impact */}
@@ -1241,111 +1207,188 @@ export default function CustomerDashboard() {
             </div>
           </div>
 
-          {/* Order Summary - Premium Dark Theme */}
-          <div 
-            className="sticky top-20 rounded-2xl overflow-hidden"
-            style={{
-              background: zamgasTheme.colors.premium.burgundy,
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-              border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
-            }}
-          >
-            <div className="p-6">
-              <h2 className="text-xl font-bold mb-4" style={{
-                color: zamgasTheme.colors.premium.gold,
-                fontFamily: zamgasTheme.typography.fontFamily.display,
-              }}>
-                Order Summary
-              </h2>
-              
-              <div className="space-y-4">
-                <div
-                  className="flex items-center gap-3 p-3 rounded-xl"
-                  style={{ background: zamgasTheme.colors.premium.burgundyLight }}
-                >
-                  <div className="p-2 rounded-lg" style={{ background: `${zamgasTheme.colors.premium.red}30` }}>
-                    <Zap className="h-6 w-6" style={{ color: zamgasTheme.colors.premium.gold }} />
-                  </div>
-                  <div>
-                    <p className="font-bold" style={{ color: '#FFFFFF' }}>
-                      {orderForm.cylinder_type}
-                    </p>
-                    <p className="text-sm" style={{ color: zamgasTheme.colors.premium.gray }}>
-                      Quantity: {orderForm.quantity}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span style={{ color: zamgasTheme.colors.premium.gray }}>Price per unit</span>
-                    <span className="font-medium" style={{ color: '#FFFFFF' }}>K {CYLINDER_PRICES[orderForm.cylinder_type]}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span style={{ color: zamgasTheme.colors.premium.gray }}>Delivery Fee</span>
-                    <span className="font-medium" style={{ color: '#FFFFFF' }}>K 25.00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span style={{ color: zamgasTheme.colors.premium.gray }}>Service Charge</span>
-                    <span className="font-medium" style={{ color: '#FFFFFF' }}>K 5.00</span>
-                  </div>
+          {/* Order Summary - Desktop Only (sidebar) */}
+          <div className="hidden lg:block">
+            <div 
+              className="sticky top-20 rounded-2xl overflow-hidden"
+              style={{
+                background: zamgasTheme.colors.premium.burgundy,
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+                border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
+              }}
+            >
+              <div className="p-6">
+                <h2 className="text-xl font-bold mb-4" style={{
+                  color: zamgasTheme.colors.premium.gold,
+                  fontFamily: zamgasTheme.typography.fontFamily.display,
+                }}>
+                  Order Summary
+                </h2>
+                
+                <div className="space-y-4">
                   <div
-                    className="border-t pt-3 mt-3"
-                    style={{ borderColor: `${zamgasTheme.colors.premium.gray}30` }}
+                    className="flex items-center gap-3 p-3 rounded-xl"
+                    style={{ background: zamgasTheme.colors.premium.burgundyLight }}
                   >
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold" style={{ color: '#FFFFFF' }}>
-                        Total
-                      </span>
-                      <span
-                        className="text-2xl font-bold"
-                        style={{ color: zamgasTheme.colors.premium.gold }}
-                      >
-                        K {(CYLINDER_PRICES[orderForm.cylinder_type] * orderForm.quantity + 25 + 5).toFixed(2)}
-                      </span>
+                    <div className="p-2 rounded-lg" style={{ background: `${zamgasTheme.colors.premium.red}30` }}>
+                      <Zap className="h-6 w-6" style={{ color: zamgasTheme.colors.premium.gold }} />
+                    </div>
+                    <div>
+                      <p className="font-bold" style={{ color: '#FFFFFF' }}>
+                        {orderForm.cylinder_type}
+                      </p>
+                      <p className="text-sm" style={{ color: zamgasTheme.colors.premium.gray }}>
+                        Quantity: {orderForm.quantity}
+                      </p>
                     </div>
                   </div>
-                </div>
 
-                <button
-                  onClick={handlePlaceOrder}
-                  disabled={isOrdering}
-                  className="w-full py-4 rounded-xl font-bold text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                  style={{
-                    background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
-                    boxShadow: `0 4px 16px ${zamgasTheme.colors.premium.red}50`,
-                    fontFamily: zamgasTheme.typography.fontFamily.display,
-                  }}
-                >
-                  {isOrdering ? 'Placing Order...' : '🔥 Place Order'}
-                </button>
-
-                <button
-                  onClick={() => router.push('/customer/orders')}
-                  className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
-                  style={{
-                    background: zamgasTheme.colors.premium.burgundyLight,
-                    color: zamgasTheme.colors.premium.gray,
-                    border: `1px solid ${zamgasTheme.colors.premium.gray}30`,
-                  }}
-                >
-                  <Package className="h-4 w-4" />
-                  View My Orders
-                </button>
-
-                {/* Clean Energy Badge */}
-                <div
-                  className="p-3 rounded-xl text-center text-xs"
-                  style={{
-                    background: `${zamgasTheme.colors.premium.gold}15`,
-                    border: `1px solid ${zamgasTheme.colors.premium.gold}30`,
-                  }}
-                >
-                  <div className="flex items-center justify-center gap-1.5 font-semibold" style={{ color: zamgasTheme.colors.premium.gold }}>
-                    <Shield className="h-3.5 w-3.5" />
-                    <span>100% Clean Cooking Energy</span>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span style={{ color: zamgasTheme.colors.premium.gray }}>Price per unit</span>
+                      <span className="font-medium" style={{ color: '#FFFFFF' }}>K {CYLINDER_PRICES[orderForm.cylinder_type]}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ color: zamgasTheme.colors.premium.gray }}>Delivery Fee</span>
+                      <span className="font-medium" style={{ color: '#FFFFFF' }}>K 25.00</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ color: zamgasTheme.colors.premium.gray }}>Service Charge</span>
+                      <span className="font-medium" style={{ color: '#FFFFFF' }}>K 5.00</span>
+                    </div>
+                    <div
+                      className="border-t pt-3 mt-3"
+                      style={{ borderColor: `${zamgasTheme.colors.premium.gray}30` }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold" style={{ color: '#FFFFFF' }}>
+                          Total
+                        </span>
+                        <span
+                          className="text-2xl font-bold"
+                          style={{ color: zamgasTheme.colors.premium.gold }}
+                        >
+                          K {(CYLINDER_PRICES[orderForm.cylinder_type] * orderForm.quantity + 25 + 5).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
+
+                  <button
+                    onClick={handlePlaceOrder}
+                    disabled={isOrdering}
+                    className="w-full py-4 rounded-xl font-bold text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                    style={{
+                      background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
+                      boxShadow: `0 4px 16px ${zamgasTheme.colors.premium.red}50`,
+                      fontFamily: zamgasTheme.typography.fontFamily.display,
+                    }}
+                  >
+                    {isOrdering ? 'Placing Order...' : '🔥 Place Order'}
+                  </button>
+
+                  <button
+                    onClick={() => router.push('/customer/orders')}
+                    className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                    style={{
+                      background: zamgasTheme.colors.premium.burgundyLight,
+                      color: zamgasTheme.colors.premium.gray,
+                      border: `1px solid ${zamgasTheme.colors.premium.gray}30`,
+                    }}
+                  >
+                    <Package className="h-4 w-4" />
+                    View My Orders
+                  </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Bottom Sheet - Order Summary */}
+      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-30">
+        {/* Collapsed Bar - Always visible */}
+        <div 
+          onClick={() => setShowOrderSheet(!showOrderSheet)}
+          className="mx-4 rounded-t-2xl cursor-pointer transition-all"
+          style={{
+            background: zamgasTheme.colors.premium.burgundy,
+            boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.4)',
+            border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
+            borderBottom: showOrderSheet ? 'none' : undefined,
+          }}
+        >
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg" style={{ background: `${zamgasTheme.colors.premium.red}30` }}>
+                <Zap className="h-5 w-5" style={{ color: zamgasTheme.colors.premium.gold }} />
+              </div>
+              <div>
+                <p className="text-xs" style={{ color: zamgasTheme.colors.premium.gray }}>Total</p>
+                <p className="text-lg font-bold" style={{ color: zamgasTheme.colors.premium.gold }}>
+                  K {(CYLINDER_PRICES[orderForm.cylinder_type] * orderForm.quantity + 25 + 5).toFixed(2)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePlaceOrder()
+                }}
+                disabled={isOrdering}
+                className="px-5 py-2.5 rounded-xl font-bold text-white text-sm transition-all active:scale-95 disabled:opacity-50"
+                style={{
+                  background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
+                  boxShadow: `0 2px 8px ${zamgasTheme.colors.premium.red}50`,
+                }}
+              >
+                {isOrdering ? '...' : '🔥 Order'}
+              </button>
+              <div 
+                className="p-2 rounded-lg"
+                style={{ background: zamgasTheme.colors.premium.burgundyLight }}
+              >
+                <span style={{ color: zamgasTheme.colors.premium.gold }}>
+                  {showOrderSheet ? '▼' : '▲'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Expanded Sheet */}
+        <div 
+          className={`mx-4 overflow-hidden transition-all duration-300 ease-out ${showOrderSheet ? 'max-h-96' : 'max-h-0'}`}
+          style={{
+            background: zamgasTheme.colors.premium.burgundy,
+            borderLeft: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
+            borderRight: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
+            borderBottom: showOrderSheet ? `1px solid ${zamgasTheme.colors.premium.burgundyLight}` : 'none',
+            borderRadius: '0 0 16px 16px',
+          }}
+        >
+          <div className="p-4 pt-0 space-y-3">
+            {/* Order Details */}
+            <div className="flex items-center justify-between py-2 border-t" style={{ borderColor: `${zamgasTheme.colors.premium.gray}20` }}>
+              <span style={{ color: zamgasTheme.colors.premium.gray }}>{orderForm.cylinder_type} × {orderForm.quantity}</span>
+              <span style={{ color: '#FFFFFF' }}>K {CYLINDER_PRICES[orderForm.cylinder_type] * orderForm.quantity}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span style={{ color: zamgasTheme.colors.premium.gray }}>Delivery</span>
+              <span style={{ color: '#FFFFFF' }}>K 25.00</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span style={{ color: zamgasTheme.colors.premium.gray }}>Service Charge</span>
+              <span style={{ color: '#FFFFFF' }}>K 5.00</span>
+            </div>
+            
+            {/* Address */}
+            <div className="py-2 border-t" style={{ borderColor: `${zamgasTheme.colors.premium.gray}20` }}>
+              <div className="flex items-center gap-2 text-xs" style={{ color: zamgasTheme.colors.premium.gray }}>
+                <MapPin className="h-3 w-3" />
+                <span className="truncate">{orderForm.delivery_address || 'No address set'}</span>
               </div>
             </div>
           </div>
