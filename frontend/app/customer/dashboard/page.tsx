@@ -785,19 +785,50 @@ export default function CustomerDashboard() {
             )}
           </div>
           
-          {/* Large Map */}
+          {/* Large Map - Dark Theme Styled */}
           {userLocation && selectedProvider?.latitude && selectedProvider?.longitude ? (
             <div
-              className="relative w-full h-52"
+              className="relative w-full h-52 overflow-hidden"
               style={{ background: zamgasTheme.colors.premium.burgundyLight }}
             >
+              {/* Map with dark mode filter */}
               <iframe
                 width="100%"
                 height="100%"
                 frameBorder="0"
-                style={{ border: 0 }}
+                style={{ 
+                  border: 0,
+                  filter: 'invert(90%) hue-rotate(180deg) saturate(0.8) contrast(0.9)',
+                }}
                 src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&origin=${userLocation.lat},${userLocation.lng}&destination=${selectedProvider.latitude},${selectedProvider.longitude}&zoom=14`}
                 allowFullScreen
+              />
+              {/* Top edge gradient blend */}
+              <div 
+                className="absolute top-0 left-0 right-0 h-6 pointer-events-none"
+                style={{
+                  background: `linear-gradient(to bottom, ${zamgasTheme.colors.premium.burgundy} 0%, transparent 100%)`,
+                }}
+              />
+              {/* Bottom edge gradient blend */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 h-4 pointer-events-none"
+                style={{
+                  background: `linear-gradient(to top, ${zamgasTheme.colors.premium.burgundy} 0%, transparent 100%)`,
+                }}
+              />
+              {/* Side gradients for seamless edges */}
+              <div 
+                className="absolute top-0 bottom-0 left-0 w-3 pointer-events-none"
+                style={{
+                  background: `linear-gradient(to right, ${zamgasTheme.colors.premium.burgundy} 0%, transparent 100%)`,
+                }}
+              />
+              <div 
+                className="absolute top-0 bottom-0 right-0 w-3 pointer-events-none"
+                style={{
+                  background: `linear-gradient(to left, ${zamgasTheme.colors.premium.burgundy} 0%, transparent 100%)`,
+                }}
               />
             </div>
           ) : (
@@ -1139,7 +1170,7 @@ export default function CustomerDashboard() {
                     )}
                   </div>
 
-                  {/* Map - Larger on mobile since order form is in bottom sheet */}
+                  {/* Map - Dark Theme Styled */}
                   {userLocation && selectedProvider.latitude && selectedProvider.longitude && (
                     <div
                       className="relative w-full h-48 sm:h-40 rounded-xl overflow-hidden"
@@ -1149,9 +1180,21 @@ export default function CustomerDashboard() {
                         width="100%"
                         height="100%"
                         frameBorder="0"
-                        style={{ border: 0 }}
+                        style={{ 
+                          border: 0,
+                          filter: 'invert(90%) hue-rotate(180deg) saturate(0.8) contrast(0.9)',
+                        }}
                         src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&origin=${userLocation.lat},${userLocation.lng}&destination=${selectedProvider.latitude},${selectedProvider.longitude}&zoom=14`}
                         allowFullScreen
+                      />
+                      {/* Edge gradients for seamless blend */}
+                      <div 
+                        className="absolute top-0 left-0 right-0 h-4 pointer-events-none"
+                        style={{ background: `linear-gradient(to bottom, ${zamgasTheme.colors.premium.burgundy}80 0%, transparent 100%)` }}
+                      />
+                      <div 
+                        className="absolute bottom-0 left-0 right-0 h-3 pointer-events-none"
+                        style={{ background: `linear-gradient(to top, ${zamgasTheme.colors.premium.burgundy}80 0%, transparent 100%)` }}
                       />
                     </div>
                   )}
