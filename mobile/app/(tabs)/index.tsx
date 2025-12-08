@@ -16,7 +16,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'
+import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps'
 import * as Location from 'expo-location'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { 
@@ -30,7 +30,7 @@ import {
   Package,
   Navigation,
   MapPinned,
-  X,
+  User,
 } from 'lucide-react-native'
 import { zamgasTheme } from '@/lib/theme'
 import { useAuthStore } from '@/lib/authStore'
@@ -40,12 +40,19 @@ const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window')
 const MAP_HEIGHT = SCREEN_HEIGHT * 0.48
 const BOTTOM_SHEET_HEIGHT = SCREEN_HEIGHT * 0.54
 
-// Cylinder sizes - compact
+// Cylinder sizes
 const CYLINDER_SIZES = [
   { size: '6KG', price: 85 },
   { size: '9KG', price: 120 },
   { size: '13KG', price: 180 },
   { size: '19KG', price: 290 },
+]
+
+// Demo providers for when API has no nearby providers
+const DEMO_PROVIDERS = [
+  { id: 'demo-1', name: 'ORYX Energy', rating: 4.8, latitude: -15.4150, longitude: 28.2850 },
+  { id: 'demo-2', name: 'Total Energies', rating: 4.6, latitude: -15.4200, longitude: 28.2780 },
+  { id: 'demo-3', name: 'Puma Energy', rating: 4.5, latitude: -15.4100, longitude: 28.2900 },
 ]
 
 export default function DashboardScreen() {
@@ -71,6 +78,10 @@ export default function DashboardScreen() {
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash')
 
+  // Animations
+  const pulseAnim = useRef(new Animated.Value(1)).current
+  const markerAnims = useRef(DEMO_PROVIDERS.map(() => new Animated.Value(0))).current
+
   // Default location (Lusaka)
   const [region, setRegion] = useState({
     latitude: -15.4167,
@@ -85,25 +96,55 @@ export default function DashboardScreen() {
       return
     }
     checkLocationPermission()
+    startPulseAnimation()
   }, [isAuthenticated])
 
   useEffect(() => {
     if (userLocation) {
       loadDashboardData()
+      animateMarkers()
     }
   }, [userLocation])
 
+  // Pulse animation for user marker
+  const startPulseAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.3,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start()
+  }
+
+  // Animate markers appearing
+  const animateMarkers = () => {
+    markerAnims.forEach((anim, index) => {
+      Animated.spring(anim, {
+        toValue: 1,
+        delay: index * 150,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }).start()
+    })
+  }
+
   const checkLocationPermission = async () => {
     try {
-      // Check if user has already granted permission
       const hasGranted = await AsyncStorage.getItem('locationPermissionGranted')
       
       if (!hasGranted) {
-        // Show modal for first-time users
         setShowLocationModal(true)
         setIsLoading(false)
       } else {
-        // Already granted, get location
         await getCurrentLocation()
       }
     } catch (error) {
@@ -122,7 +163,6 @@ export default function DashboardScreen() {
         return
       }
 
-      // Save that permission was granted
       await AsyncStorage.setItem('locationPermissionGranted', 'true')
 
       const location = await Location.getCurrentPositionAsync({
@@ -137,11 +177,11 @@ export default function DashboardScreen() {
       setUserLocation(coords)
       setRegion({
         ...coords,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
+        latitudeDelta: 0.025,
+        longitudeDelta: 0.025,
       })
 
-      // Reverse geocode to get address
+      // Reverse geocode
       try {
         const [address] = await Location.reverseGeocodeAsync(coords)
         if (address) {
@@ -156,7 +196,7 @@ export default function DashboardScreen() {
         }
       } catch {}
 
-      // Update user location on server
+      // Update server
       try {
         await userAPI.updateLocation(coords.latitude, coords.longitude)
         updateUser({ latitude: coords.latitude, longitude: coords.longitude })
@@ -177,16 +217,29 @@ export default function DashboardScreen() {
 
   const loadDashboardData = async () => {
     try {
-      // Load providers
       const providersData = await providerAPI.getAll()
-      setProviders(providersData || [])
+      
+      let displayProviders: Provider[] = []
       
       if (providersData && providersData.length > 0) {
-        // Find nearest provider
-        let nearest = providersData[0]
+        displayProviders = providersData
+      } else if (userLocation) {
+        // Use demo providers around user location
+        displayProviders = DEMO_PROVIDERS.map((p, i) => ({
+          ...p,
+          latitude: userLocation.latitude + (Math.random() - 0.5) * 0.02,
+          longitude: userLocation.longitude + (Math.random() - 0.5) * 0.02,
+        })) as Provider[]
+      }
+      
+      setProviders(displayProviders)
+      
+      if (displayProviders.length > 0) {
+        // Select nearest
+        let nearest = displayProviders[0]
         if (userLocation) {
           let minDist = Infinity
-          providersData.forEach((p: Provider) => {
+          displayProviders.forEach((p) => {
             if (p.latitude && p.longitude) {
               const dist = Math.sqrt(
                 Math.pow(p.latitude - userLocation.latitude, 2) +
@@ -200,16 +253,31 @@ export default function DashboardScreen() {
           })
         }
         setSelectedProvider(nearest)
+        
+        // Fit map to show user and providers
+        if (mapRef.current && userLocation) {
+          const coords = [
+            { latitude: userLocation.latitude, longitude: userLocation.longitude },
+            ...displayProviders.slice(0, 3).map(p => ({
+              latitude: p.latitude || 0,
+              longitude: p.longitude || 0,
+            })),
+          ]
+          mapRef.current.fitToCoordinates(coords, {
+            edgePadding: { top: 100, right: 50, bottom: 200, left: 50 },
+            animated: true,
+          })
+        }
       }
       
-      // Load active orders
+      // Active orders
       try {
         const orders = await orderAPI.getUserOrders()
         const active = orders?.find((o: Order) => ['pending', 'accepted', 'in-transit'].includes(o.status))
         setActiveOrder(active || null)
       } catch {}
 
-      // Load preferences
+      // Preferences
       try {
         const prefs = await preferencesAPI.get()
         if (prefs?.preferences) {
@@ -255,10 +323,11 @@ export default function DashboardScreen() {
       }).catch(() => {})
 
       setShowSuccess(true)
+      // Shorter notification - 2.5 seconds
       setTimeout(() => {
         setShowSuccess(false)
         loadDashboardData()
-      }, 3500)
+      }, 2500)
       
     } catch (error: any) {
       Alert.alert('Order Failed', error.message || 'Please try again')
@@ -271,7 +340,7 @@ export default function DashboardScreen() {
   const deliveryFee = 20
   const grandTotal = totalPrice + deliveryFee
 
-  // Location Permission Modal
+  // Location Modal
   if (showLocationModal) {
     return (
       <Modal visible transparent animationType="fade">
@@ -282,7 +351,7 @@ export default function DashboardScreen() {
             </View>
             <Text style={styles.modalTitle}>Enable Location</Text>
             <Text style={styles.modalText}>
-              ZAMGAS needs your location to find nearby LPG providers and deliver to your address.
+              Find LPG providers near you and get gas delivered to your doorstep.
             </Text>
             <TouchableOpacity style={styles.modalButton} onPress={handleLocationPermission}>
               <MapPin size={18} color="white" />
@@ -293,9 +362,11 @@ export default function DashboardScreen() {
               onPress={() => {
                 setShowLocationModal(false)
                 setIsLoading(false)
+                // Use default location
+                setUserLocation({ latitude: -15.4167, longitude: 28.2833 })
               }}
             >
-              <Text style={styles.modalSkipText}>Skip for now</Text>
+              <Text style={styles.modalSkipText}>Use default location</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -315,7 +386,7 @@ export default function DashboardScreen() {
     )
   }
 
-  // Success Screen
+  // Success Screen - shorter duration
   if (showSuccess) {
     return (
       <View style={styles.successOverlay}>
@@ -324,16 +395,12 @@ export default function DashboardScreen() {
             <CheckCircle size={56} color={zamgasTheme.colors.semantic.success} />
           </View>
           <Text style={styles.successTitle}>Order Placed! 🔥</Text>
-          <Text style={styles.successSubtitle}>Est. delivery: 30-60 mins</Text>
+          <Text style={styles.successSubtitle}>Delivery in 30-60 mins</Text>
           
           <View style={styles.successDetails}>
             <View style={styles.successRow}>
               <Package size={16} color={zamgasTheme.colors.premium.gold} />
-              <Text style={styles.successText}>{selectedCylinder.size} × {quantity} — K{grandTotal}</Text>
-            </View>
-            <View style={styles.successRow}>
-              <MapPin size={16} color={zamgasTheme.colors.premium.gold} />
-              <Text style={styles.successText} numberOfLines={1}>{deliveryAddress}</Text>
+              <Text style={styles.successText}>{selectedCylinder.size} × {quantity} = K{grandTotal}</Text>
             </View>
           </View>
 
@@ -354,18 +421,40 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Map Section */}
+      {/* Map */}
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
           style={styles.map}
           provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
           region={region}
-          showsUserLocation
+          showsUserLocation={false}
           showsMyLocationButton={false}
           customMapStyle={darkMapStyle}
         >
-          {providers.map((provider) => (
+          {/* User Location Marker with pulse */}
+          {userLocation && (
+            <>
+              <Circle
+                center={userLocation}
+                radius={200}
+                fillColor={`${zamgasTheme.colors.premium.gold}15`}
+                strokeColor={`${zamgasTheme.colors.premium.gold}40`}
+                strokeWidth={1}
+              />
+              <Marker coordinate={userLocation}>
+                <View style={styles.userMarkerContainer}>
+                  <Animated.View style={[styles.userMarkerPulse, { transform: [{ scale: pulseAnim }] }]} />
+                  <View style={styles.userMarkerInner}>
+                    <User size={14} color="white" />
+                  </View>
+                </View>
+              </Marker>
+            </>
+          )}
+
+          {/* Provider Markers with animation */}
+          {providers.slice(0, 5).map((provider, index) => (
             provider.latitude && provider.longitude && (
               <Marker
                 key={provider.id}
@@ -375,12 +464,28 @@ export default function DashboardScreen() {
                 }}
                 onPress={() => setSelectedProvider(provider)}
               >
-                <View style={[
-                  styles.markerContainer,
-                  selectedProvider?.id === provider.id && styles.markerSelected
-                ]}>
-                  <Zap size={14} color={selectedProvider?.id === provider.id ? zamgasTheme.colors.premium.burgundy : 'white'} />
-                </View>
+                <Animated.View 
+                  style={[
+                    styles.providerMarkerOuter,
+                    selectedProvider?.id === provider.id && styles.providerMarkerSelected,
+                    {
+                      transform: [
+                        { scale: markerAnims[index] || new Animated.Value(1) },
+                      ],
+                    },
+                  ]}
+                >
+                  <View style={[
+                    styles.providerMarkerInner,
+                    selectedProvider?.id === provider.id && styles.providerMarkerInnerSelected,
+                  ]}>
+                    <Zap 
+                      size={12} 
+                      color={selectedProvider?.id === provider.id ? zamgasTheme.colors.premium.burgundy : 'white'} 
+                      fill={selectedProvider?.id === provider.id ? zamgasTheme.colors.premium.burgundy : 'transparent'}
+                    />
+                  </View>
+                </Animated.View>
               </Marker>
             )
           ))}
@@ -389,17 +494,18 @@ export default function DashboardScreen() {
         {/* Header */}
         <SafeAreaView style={styles.mapOverlay} edges={['top']}>
           <View style={styles.mapHeader}>
-            <View style={styles.logoSmall}>
-              <Zap size={18} color={zamgasTheme.colors.premium.burgundy} />
-            </View>
+            <Image 
+              source={require('@/assets/images/icon.png')} 
+              style={styles.logoImage}
+            />
             <View style={{ flex: 1 }}>
               <Text style={styles.welcomeText}>Hi, {user?.name?.split(' ')[0]} 👋</Text>
-              <Text style={styles.taglineText} numberOfLines={1}>{locationAddress || 'Getting location...'}</Text>
+              <Text style={styles.taglineText} numberOfLines={1}>{locationAddress || 'Lusaka, Zambia'}</Text>
             </View>
           </View>
         </SafeAreaView>
 
-        {/* Active Order */}
+        {/* Active Order - shorter display */}
         {activeOrder && (
           <TouchableOpacity 
             style={styles.activeOrderBanner}
@@ -427,6 +533,11 @@ export default function DashboardScreen() {
             )}
           </View>
         )}
+
+        {/* Provider count badge */}
+        <View style={styles.providerCountBadge}>
+          <Text style={styles.providerCountText}>{providers.length} providers nearby</Text>
+        </View>
       </View>
 
       {/* Bottom Sheet */}
@@ -438,7 +549,7 @@ export default function DashboardScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
         >
-          {/* Cylinder Selection - Compact */}
+          {/* Cylinder Selection */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Select Size</Text>
             <View style={styles.cylinderRow}>
@@ -468,9 +579,8 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          {/* Quantity + Address Row */}
+          {/* Quantity + Address */}
           <View style={styles.rowSection}>
-            {/* Quantity */}
             <View style={styles.qtySection}>
               <Text style={styles.sectionTitle}>Qty</Text>
               <View style={styles.qtyRow}>
@@ -490,7 +600,6 @@ export default function DashboardScreen() {
               </View>
             </View>
 
-            {/* Address */}
             <View style={styles.addressSection}>
               <Text style={styles.sectionTitle}>Deliver to</Text>
               <View style={styles.addressInput}>
@@ -507,7 +616,7 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          {/* Payment - Compact */}
+          {/* Payment */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Payment</Text>
             <View style={styles.paymentRow}>
@@ -613,10 +722,10 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
 
-  // Location Modal
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
@@ -694,13 +803,10 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 10,
   },
-  logoSmall: {
-    width: 38,
-    height: 38,
+  logoImage: {
+    width: 40,
+    height: 40,
     borderRadius: 10,
-    backgroundColor: zamgasTheme.colors.premium.gold,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   welcomeText: {
     color: 'white',
@@ -711,20 +817,56 @@ const styles = StyleSheet.create({
     color: zamgasTheme.colors.premium.gray,
     fontSize: 11,
   },
-  markerContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+
+  // User Marker
+  userMarkerContainer: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userMarkerPulse: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: `${zamgasTheme.colors.premium.gold}30`,
+  },
+  userMarkerInner: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: zamgasTheme.colors.premium.gold,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'white',
+  },
+
+  // Provider Markers
+  providerMarkerOuter: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  providerMarkerSelected: {
+    transform: [{ scale: 1.2 }],
+  },
+  providerMarkerInner: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: zamgasTheme.colors.premium.red,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'white',
   },
-  markerSelected: {
+  providerMarkerInnerSelected: {
     backgroundColor: zamgasTheme.colors.premium.gold,
-    transform: [{ scale: 1.15 }],
   },
+  
   activeOrderBanner: {
     position: 'absolute',
     bottom: 56,
@@ -788,6 +930,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+  providerCountBadge: {
+    position: 'absolute',
+    top: 80,
+    right: 14,
+    backgroundColor: `${zamgasTheme.colors.premium.burgundy}CC`,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  providerCountText: {
+    color: zamgasTheme.colors.premium.gold,
+    fontSize: 11,
+    fontWeight: '600',
+  },
 
   // Bottom Sheet
   bottomSheet: {
@@ -825,7 +981,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   
-  // Cylinders - Compact
+  // Cylinders
   cylinderRow: {
     flexDirection: 'row',
     gap: 8,
@@ -859,7 +1015,7 @@ const styles = StyleSheet.create({
     color: 'white',
   },
 
-  // Quantity + Address Row
+  // Quantity + Address
   rowSection: {
     flexDirection: 'row',
     gap: 10,
@@ -906,7 +1062,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  // Payment - Compact
+  // Payment
   paymentRow: {
     flexDirection: 'row',
     gap: 8,
