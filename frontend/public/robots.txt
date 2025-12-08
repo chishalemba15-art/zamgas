@@ -1,0 +1,36 @@
+# ZAMGAS Robots.txt
+# https://www.zamgas.com/robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /provider/
+Disallow: /courier/
+Disallow: /_next/
+
+# Sitemap location
+Sitemap: https://www.zamgas.com/sitemap.xml
+
+# Crawl delay for respectful crawling
+Crawl-delay: 1
+
+# Specific bot instructions
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /

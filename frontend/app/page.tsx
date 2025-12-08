@@ -142,21 +142,29 @@ export default function Home() {
               alt="ZAMGAS" 
               width={120} 
               height={120}
+              priority
               className="rounded-2xl animate-bounce"
               style={{ animationDuration: '2s' }}
             />
           </div>
           
-          {/* Floating particles */}
+          {/* Floating particles - fixed positions */}
           <div className="absolute -inset-8">
-            {[...Array(6)].map((_, i) => (
+            {[
+              { top: '20%', left: '30%' },
+              { top: '35%', left: '70%' },
+              { top: '50%', left: '25%' },
+              { top: '65%', left: '65%' },
+              { top: '40%', left: '45%' },
+              { top: '75%', left: '35%' },
+            ].map((pos, i) => (
               <div
                 key={i}
                 className="absolute w-2 h-2 rounded-full animate-ping"
                 style={{
                   background: zamgasTheme.colors.premium.gold,
-                  top: `${20 + Math.random() * 60}%`,
-                  left: `${20 + Math.random() * 60}%`,
+                  top: pos.top,
+                  left: pos.left,
                   animationDelay: `${i * 0.3}s`,
                   animationDuration: '1.5s',
                   opacity: 0.6,
