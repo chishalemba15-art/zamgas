@@ -6,7 +6,7 @@
 import * as SecureStore from 'expo-secure-store'
 
 // API Configuration
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://zamgas-alb-934347338.us-east-1.elb.amazonaws.com'
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.zamgas.com'
 
 // Token management for React Native
 export const getAuthToken = async (): Promise<string | null> => {
@@ -104,48 +104,91 @@ export interface UserPreferences {
 // Auth API
 export const authAPI = {
     login: async (email: string, password: string) => {
-        const response = await fetch(`${API_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-        })
+        console.log('Attempting login to:', `${API_URL}/auth/signin`)
 
-        if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.error || 'Login failed')
+        try {
+            const response = await fetch(`${API_URL}/auth/signin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            })
+
+            // Get response text first
+            const text = await response.text()
+            console.log('Login response status:', response.status)
+
+            // Try to parse as JSON
+            let data
+            try {
+                data = JSON.parse(text)
+            } catch (e) {
+                // Response is not JSON (likely HTML error page)
+                console.error('Non-JSON response:', text.substring(0, 200))
+                throw new Error('Server error. Please try again later.')
+            }
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Login failed')
+            }
+
+            return data
+        } catch (error: any) {
+            console.error('Login error:', error.message)
+            throw error
         }
-
-        return response.json()
     },
 
     register: async (data: { name: string; email: string; phone_number: string; password: string; user_type: string }) => {
-        const response = await fetch(`${API_URL}/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        })
+        console.log('Attempting registration to:', `${API_URL}/auth/signup`)
 
-        if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.error || 'Registration failed')
+        try {
+            const response = await fetch(`${API_URL}/auth/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...data,
+                    expoPushToken: '', // Required by the backend
+                }),
+            })
+
+            // Get response text first
+            const text = await response.text()
+            console.log('Register response status:', response.status)
+
+            // Try to parse as JSON
+            let result
+            try {
+                result = JSON.parse(text)
+            } catch (e) {
+                // Response is not JSON
+                console.error('Non-JSON response:', text.substring(0, 200))
+                throw new Error('Server error. Please try again later.')
+            }
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Registration failed')
+            }
+
+            return result
+        } catch (error: any) {
+            console.error('Register error:', error.message)
+            throw error
         }
-
-        return response.json()
     },
 }
 
 // User API
 export const userAPI = {
-    getProfile: () => fetchWithAuth('/users/profile'),
+    getProfile: () => fetchWithAuth('/user/profile'),
 
     updateProfile: (data: Partial<User>) =>
-        fetchWithAuth('/users/profile', {
+        fetchWithAuth('/user/profile', {
             method: 'PUT',
             body: JSON.stringify(data),
         }),
 
     updateLocation: (latitude: number, longitude: number) =>
-        fetchWithAuth('/users/profile', {
+        fetchWithAuth('/user/location', {
             method: 'PUT',
             body: JSON.stringify({ latitude, longitude }),
         }),
@@ -155,45 +198,51 @@ export const userAPI = {
 export const providerAPI = {
     getAll: () => fetchWithAuth('/providers'),
     getById: (id: string) => fetchWithAuth(`/providers/${id}`),
+    getBest: () => fetchWithAuth('/customer/best', { method: 'POST' }),
 }
 
 // Order API
 export const orderAPI = {
     create: (order: Partial<Order>) =>
-        fetchWithAuth('/orders', {
+        fetchWithAuth('/user/orders/create', {
             method: 'POST',
             body: JSON.stringify(order),
         }),
 
-    getUserOrders: () => fetchWithAuth('/orders/user'),
+    getUserOrders: () => fetchWithAuth('/user/orders'),
 
     getById: (id: string) => fetchWithAuth(`/orders/${id}`),
 
     cancel: (id: string) =>
         fetchWithAuth(`/orders/${id}/cancel`, { method: 'POST' }),
+
+    updatePaymentStatus: (id: string, status: string) =>
+        fetchWithAuth(`/user/orders/${id}/payment-status`, {
+            method: 'PUT',
+            body: JSON.stringify({ payment_status: status }),
+        }),
 }
 
 // Preferences API
 export const preferencesAPI = {
-    get: () => fetchWithAuth('/preferences'),
+    get: () => fetchWithAuth('/customer/preferences'),
 
     upsert: (prefs: UserPreferences) =>
-        fetchWithAuth('/preferences', {
+        fetchWithAuth('/customer/preferences', {
             method: 'PUT',
             body: JSON.stringify(prefs),
         }),
 
     updateCylinderType: (cylinderType: string) =>
-        fetchWithAuth('/preferences', {
+        fetchWithAuth('/customer/preferences/cylinder', {
             method: 'PUT',
-            body: JSON.stringify({ preferred_cylinder_type: cylinderType }),
+            body: JSON.stringify({ cylinder_type: cylinderType }),
         }),
 }
 
 // Nearest Provider API
 export const nearestProviderAPI = {
-    get: (premiumOnly: boolean = false) =>
-        fetchWithAuth(`/providers/nearest?premium=${premiumOnly}`),
+    get: () => fetchWithAuth('/customer/nearest-provider', { method: 'POST' }),
 }
 
 // Payments API

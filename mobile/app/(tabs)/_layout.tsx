@@ -14,24 +14,24 @@ export default function TabLayout() {
           backgroundColor: zamgasTheme.colors.premium.burgundy,
           borderTopColor: zamgasTheme.colors.premium.burgundyLight,
           borderTopWidth: 1,
-          height: 88,
-          paddingBottom: 24,
-          paddingTop: 12,
+          height: 80,
+          paddingBottom: 20,
+          paddingTop: 10,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
-          marginTop: 4,
+          marginTop: 2,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Order',
+          title: 'Order Gas',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <Zap size={24} color={color} />
+              <Zap size={22} color={color} fill={focused ? color : 'transparent'} />
             </View>
           ),
         }}
@@ -42,7 +42,7 @@ export default function TabLayout() {
           title: 'My Orders',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <Package size={24} color={color} />
+              <Package size={22} color={color} />
             </View>
           ),
         }}
@@ -53,7 +53,7 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <User size={24} color={color} />
+              <User size={22} color={color} />
             </View>
           ),
         }}
@@ -61,10 +61,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="support"
         options={{
-          title: 'Support',
+          title: 'Help',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <MessageCircle size={24} color={color} />
+              <MessageCircle size={22} color={color} />
             </View>
           ),
         }}
@@ -75,9 +75,9 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   iconContainer: {
-    width: 44,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
