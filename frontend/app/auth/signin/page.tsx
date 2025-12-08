@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Flame, Mail, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -12,9 +12,8 @@ import toast from 'react-hot-toast'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.zamgas.com'
 
-export default function SignIn() {
+function SignInContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { setAuth } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
@@ -215,3 +214,14 @@ export default function SignIn() {
   )
 }
 
+export default function SignIn() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-accent-50 flex items-center justify-center p-4">
+        <div className="animate-spin h-8 w-8 border-4 border-brand-600 border-t-transparent rounded-full"></div>
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
+  )
+}
