@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -921,7 +922,13 @@ func handleCreateOrder(orderService *order.Service, inventoryService *inventory.
 func handleGoogleLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		config := auth.GetGoogleOAuthConfig()
-		url := config.AuthCodeURL("state", oauth2.AccessTypeOffline)
+		// Store user_type in state if provided
+		userType := c.Query("user_type")
+		state := "state"
+		if userType != "" {
+			state = "user_type=" + userType
+		}
+		url := config.AuthCodeURL(state, oauth2.AccessTypeOffline)
 		c.Redirect(http.StatusTemporaryRedirect, url)
 	}
 }
@@ -935,65 +942,100 @@ func handleGoogleCallback(authService *auth.Service, userService *user.Service) 
 			return
 		}
 
+		// Get user_type from state parameter
+		state := c.Query("state")
+		userType := user.UserTypeCustomer // default
+		if state != "" && state != "state" {
+			// Parse user_type from state (format: "user_type=courier")
+			if len(state) > 10 && state[:10] == "user_type=" {
+				if state[10:] == "courier" {
+					userType = user.UserTypeCourier
+				} else if state[10:] == "provider" {
+					userType = user.UserTypeProvider
+				}
+			}
+		}
+
 		// Exchange code for token
 		token, err := auth.ExchangeCodeForToken(code)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to exchange token"})
+			log.Printf("Failed to exchange code for token: %v", err)
+			c.Redirect(http.StatusTemporaryRedirect, "https://www.zamgas.com/auth/signin?error=auth_failed")
 			return
 		}
 
 		// Get user info from Google
 		googleUser, err := auth.GetGoogleUserInfo(token.AccessToken)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info"})
+			log.Printf("Failed to get Google user info: %v", err)
+			c.Redirect(http.StatusTemporaryRedirect, "https://www.zamgas.com/auth/signin?error=user_info_failed")
 			return
 		}
 
 		// Check if user exists
 		existingUser, err := userService.GetUserByEmail(googleUser.Email)
-		var userID uuid.UUID
+		var appUser *user.User
 
 		if err != nil && !errors.Is(err, user.ErrUserNotFound) {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+			log.Printf("Database error: %v", err)
+			c.Redirect(http.StatusTemporaryRedirect, "https://www.zamgas.com/auth/signin?error=database_error")
 			return
 		}
 
 		if existingUser != nil {
 			// User exists, log them in
-			userID = existingUser.ID
+			appUser = existingUser
 		} else {
-			// Create new user
+			// Create new user with specified type
 			newUser := &user.User{
 				Email:       googleUser.Email,
 				Name:        googleUser.Name,
 				Password:    "", // No password for OAuth users
-				UserType:    user.UserTypeCustomer,
+				UserType:    userType,
 				PhoneNumber: "",
 			}
 
 			createdUser, err := userService.CreateUser(newUser)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+				log.Printf("Failed to create user: %v", err)
+				c.Redirect(http.StatusTemporaryRedirect, "https://www.zamgas.com/auth/signin?error=create_failed")
 				return
 			}
-			userID = createdUser.ID
+			appUser = createdUser
 		}
 
 		// Generate JWT token
-		jwtToken, err := authService.GenerateToken(userID)
+		jwtToken, err := authService.GenerateToken(appUser.ID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+			log.Printf("Failed to generate token: %v", err)
+			c.Redirect(http.StatusTemporaryRedirect, "https://www.zamgas.com/auth/signin?error=token_failed")
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"token": jwtToken,
-			"user": gin.H{
-				"id":    userID,
-				"email": googleUser.Email,
-				"name":  googleUser.Name,
-			},
-		})
+		// Determine redirect URL based on user type
+		var redirectURL string
+		switch appUser.UserType {
+		case user.UserTypeCourier:
+			redirectURL = "https://www.zamgas.com/courier/dashboard"
+		case user.UserTypeProvider:
+			redirectURL = "https://www.zamgas.com/provider/dashboard"
+		default:
+			redirectURL = "https://www.zamgas.com/customer/dashboard"
+		}
+
+		// Redirect to frontend with token in hash (for security, tokens should be in hash not query)
+		// Format: /dashboard#token=xxx&user_id=xxx&user_name=xxx&user_email=xxx&user_type=xxx
+		redirectWithAuth := fmt.Sprintf(
+			"%s#token=%s&user_id=%s&user_name=%s&user_email=%s&user_type=%s",
+			redirectURL,
+			jwtToken,
+			appUser.ID.String(),
+			url.QueryEscape(appUser.Name),
+			url.QueryEscape(appUser.Email),
+			string(appUser.UserType),
+		)
+
+		c.Redirect(http.StatusTemporaryRedirect, redirectWithAuth)
 	}
 }
 

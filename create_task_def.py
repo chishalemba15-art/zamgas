@@ -21,12 +21,18 @@ new_td = {
 if 'taskRoleArn' in td:
     new_td['taskRoleArn'] = td['taskRoleArn']
 
-# Update image to v26
+# Update image to latest version
 for container in new_td['containerDefinitions']:
     if container['name'] == 'zamgas-container':
-        container['image'] = '296093722884.dkr.ecr.eu-west-2.amazonaws.com/zamgas:v31'
+        container['image'] = '296093722884.dkr.ecr.eu-west-2.amazonaws.com/zamgas:v32'
+        
+        # Note: Google OAuth credentials should be added via AWS ECS console
+        # or AWS Secrets Manager, not hardcoded here
+        # Required env vars: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URL
 
 with open('new_task_def.json', 'w') as f:
     json.dump(new_td, f, indent=4)
 
-print("Created new_task_def.json with updated image tag v26")
+print("Created new_task_def.json with image tag v32")
+
+

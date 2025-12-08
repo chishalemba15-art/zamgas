@@ -7,6 +7,7 @@ import { orderAPI, courierAPI, type Order } from '@/lib/api'
 import { Package, MapPin, Phone, TrendingUp, Clock, CheckCircle, Bell, X, Check } from 'lucide-react'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { zamgasTheme } from '@/lib/zamgas-theme'
+import { useAuthStore } from '@/store/authStore'
 import toast from 'react-hot-toast'
 
 export default function CourierDashboard() {
@@ -20,6 +21,38 @@ export default function CourierDashboard() {
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null)
 
   useEffect(() => {
+    // Handle Google OAuth callback - capture token from URL hash
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const hash = window.location.hash.substring(1) // Remove the #
+      const params = new URLSearchParams(hash)
+      const token = params.get('token')
+      const userId = params.get('user_id')
+      const userName = params.get('user_name')
+      const userEmail = params.get('user_email')
+      const userType = params.get('user_type')
+      
+      if (token && userId) {
+        // Store auth data
+        localStorage.setItem('authToken', token)
+        const userData = {
+          id: userId,
+          name: decodeURIComponent(userName || ''),
+          email: decodeURIComponent(userEmail || ''),
+          user_type: (userType || 'courier') as 'customer' | 'provider' | 'courier' | 'admin'
+        }
+        localStorage.setItem('user', JSON.stringify(userData))
+        
+        // Update auth store
+        const { setAuth } = useAuthStore.getState()
+        setAuth(userData, token)
+        
+        // Clear the hash from URL
+        window.history.replaceState(null, '', window.location.pathname)
+        
+        toast.success(`Welcome, ${userData.name}!`)
+      }
+    }
+
     fetchOrders()
     // Poll for new orders every 30 seconds
     const interval = setInterval(fetchOrders, 30000)

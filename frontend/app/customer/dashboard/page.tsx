@@ -80,6 +80,38 @@ export default function CustomerDashboard() {
     if (savedCylinder) {
       setOrderForm(prev => ({ ...prev, cylinder_type: savedCylinder }))
     }
+    
+    // Handle Google OAuth callback - capture token from URL hash
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const hash = window.location.hash.substring(1) // Remove the #
+      const params = new URLSearchParams(hash)
+      const token = params.get('token')
+      const userId = params.get('user_id')
+      const userName = params.get('user_name')
+      const userEmail = params.get('user_email')
+      const userType = params.get('user_type')
+      
+      if (token && userId) {
+        // Store auth data
+        localStorage.setItem('authToken', token)
+        const userData = {
+          id: userId,
+          name: decodeURIComponent(userName || ''),
+          email: decodeURIComponent(userEmail || ''),
+          user_type: (userType || 'customer') as 'customer' | 'provider' | 'courier' | 'admin'
+        }
+        localStorage.setItem('user', JSON.stringify(userData))
+        
+        // Update auth store
+        const { setAuth } = useAuthStore.getState()
+        setAuth(userData, token)
+        
+        // Clear the hash from URL
+        window.history.replaceState(null, '', window.location.pathname)
+        
+        toast.success(`Welcome, ${userData.name}!`)
+      }
+    }
   }, [])
   const [isOrdering, setIsOrdering] = useState(false)
 
