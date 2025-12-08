@@ -12,54 +12,48 @@ import {
   Image,
   ScrollView,
   Platform,
+  Modal,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'
+import * as Location from 'expo-location'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { 
   Zap, 
   MapPin, 
   Star, 
   Minus, 
   Plus, 
-  ChevronUp,
-  ChevronDown,
   Truck,
   CheckCircle,
   Package,
   Navigation,
+  MapPinned,
+  X,
 } from 'lucide-react-native'
 import { zamgasTheme } from '@/lib/theme'
 import { useAuthStore } from '@/lib/authStore'
-import { providerAPI, orderAPI, preferencesAPI, nearestProviderAPI, Provider, Order } from '@/lib/api'
+import { providerAPI, orderAPI, preferencesAPI, userAPI, Provider, Order } from '@/lib/api'
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window')
-const MAP_HEIGHT = SCREEN_HEIGHT * 0.42
-const BOTTOM_SHEET_MIN = SCREEN_HEIGHT * 0.58
-const BOTTOM_SHEET_MAX = SCREEN_HEIGHT * 0.85
+const MAP_HEIGHT = SCREEN_HEIGHT * 0.48
+const BOTTOM_SHEET_HEIGHT = SCREEN_HEIGHT * 0.54
 
-// Cylinder sizes and prices
+// Cylinder sizes - compact
 const CYLINDER_SIZES = [
-  { size: '6KG', price: 85, emoji: '🔥' },
-  { size: '9KG', price: 120, emoji: '🔥' },
-  { size: '13KG', price: 180, emoji: '⚡' },
-  { size: '19KG', price: 290, emoji: '💪' },
-]
-
-// Payment methods with logos
-const PAYMENT_METHODS = [
-  { id: 'cash', name: 'Cash', icon: '💵' },
-  { id: 'mtn', name: 'MTN MoMo', logo: 'https://upload.wikimedia.org/wikipedia/commons/9/93/New-mtn-logo.jpg' },
-  { id: 'airtel', name: 'Airtel Money', logo: 'https://upload.wikimedia.org/wikipedia/commons/7/7f/Airtel_Africa_logo.svg' },
-  { id: 'zamtel', name: 'Zamtel Kwacha', logo: null, color: '#00A651' },
+  { size: '6KG', price: 85 },
+  { size: '9KG', price: 120 },
+  { size: '13KG', price: 180 },
+  { size: '19KG', price: 290 },
 ]
 
 export default function DashboardScreen() {
-  const { user, isAuthenticated } = useAuthStore()
+  const { user, isAuthenticated, updateUser } = useAuthStore()
   const [isLoading, setIsLoading] = useState(true)
   const [isOrdering, setIsOrdering] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [lastOrderId, setLastOrderId] = useState('')
+  const [showLocationModal, setShowLocationModal] = useState(false)
   
   // Map & Provider
   const [providers, setProviders] = useState<Provider[]>([])
@@ -67,12 +61,12 @@ export default function DashboardScreen() {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null)
   const mapRef = useRef<MapView>(null)
   
-  // Bottom Sheet
-  const [isExpanded, setIsExpanded] = useState(false)
-  const bottomSheetAnim = useRef(new Animated.Value(0)).current
+  // Location
+  const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null)
+  const [locationAddress, setLocationAddress] = useState('')
   
   // Order form
-  const [selectedCylinder, setSelectedCylinder] = useState(CYLINDER_SIZES[2]) // Default 13KG
+  const [selectedCylinder, setSelectedCylinder] = useState(CYLINDER_SIZES[2])
   const [quantity, setQuantity] = useState(1)
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash')
@@ -81,50 +75,131 @@ export default function DashboardScreen() {
   const [region, setRegion] = useState({
     latitude: -15.4167,
     longitude: 28.2833,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
+    latitudeDelta: 0.03,
+    longitudeDelta: 0.03,
   })
 
   useEffect(() => {
     if (!isAuthenticated) {
       router.replace('/(auth)/signin')
+      return
     }
+    checkLocationPermission()
   }, [isAuthenticated])
 
   useEffect(() => {
-    loadDashboardData()
-  }, [])
+    if (userLocation) {
+      loadDashboardData()
+    }
+  }, [userLocation])
 
-  useEffect(() => {
-    Animated.spring(bottomSheetAnim, {
-      toValue: isExpanded ? 1 : 0,
-      useNativeDriver: false,
-      friction: 8,
-    }).start()
-  }, [isExpanded])
+  const checkLocationPermission = async () => {
+    try {
+      // Check if user has already granted permission
+      const hasGranted = await AsyncStorage.getItem('locationPermissionGranted')
+      
+      if (!hasGranted) {
+        // Show modal for first-time users
+        setShowLocationModal(true)
+        setIsLoading(false)
+      } else {
+        // Already granted, get location
+        await getCurrentLocation()
+      }
+    } catch (error) {
+      console.error('Permission check error:', error)
+      setIsLoading(false)
+    }
+  }
+
+  const getCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      
+      if (status !== 'granted') {
+        Alert.alert('Location Required', 'Please enable location to find nearby providers')
+        setIsLoading(false)
+        return
+      }
+
+      // Save that permission was granted
+      await AsyncStorage.setItem('locationPermissionGranted', 'true')
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      })
+
+      const coords = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      }
+      
+      setUserLocation(coords)
+      setRegion({
+        ...coords,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      })
+
+      // Reverse geocode to get address
+      try {
+        const [address] = await Location.reverseGeocodeAsync(coords)
+        if (address) {
+          const formattedAddress = [
+            address.street,
+            address.district || address.subregion,
+            address.city,
+          ].filter(Boolean).join(', ')
+          
+          setLocationAddress(formattedAddress)
+          setDeliveryAddress(formattedAddress)
+        }
+      } catch {}
+
+      // Update user location on server
+      try {
+        await userAPI.updateLocation(coords.latitude, coords.longitude)
+        updateUser({ latitude: coords.latitude, longitude: coords.longitude })
+      } catch {}
+
+    } catch (error) {
+      console.error('Location error:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleLocationPermission = async () => {
+    setShowLocationModal(false)
+    setIsLoading(true)
+    await getCurrentLocation()
+  }
 
   const loadDashboardData = async () => {
     try {
-      setIsLoading(true)
-      
       // Load providers
       const providersData = await providerAPI.getAll()
       setProviders(providersData || [])
       
-      // Select nearest or random provider
       if (providersData && providersData.length > 0) {
-        const randomProvider = providersData[Math.floor(Math.random() * providersData.length)]
-        setSelectedProvider(randomProvider)
-        
-        // Center map on provider
-        if (randomProvider.latitude && randomProvider.longitude) {
-          setRegion({
-            latitude: randomProvider.latitude,
-            longitude: randomProvider.longitude,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
+        // Find nearest provider
+        let nearest = providersData[0]
+        if (userLocation) {
+          let minDist = Infinity
+          providersData.forEach((p: Provider) => {
+            if (p.latitude && p.longitude) {
+              const dist = Math.sqrt(
+                Math.pow(p.latitude - userLocation.latitude, 2) +
+                Math.pow(p.longitude - userLocation.longitude, 2)
+              )
+              if (dist < minDist) {
+                minDist = dist
+                nearest = p
+              }
+            }
           })
         }
+        setSelectedProvider(nearest)
       }
       
       // Load active orders
@@ -142,15 +217,13 @@ export default function DashboardScreen() {
             const found = CYLINDER_SIZES.find(c => c.size === prefs.preferences.preferred_cylinder_type)
             if (found) setSelectedCylinder(found)
           }
-          if (prefs.preferences.saved_delivery_address) {
+          if (prefs.preferences.saved_delivery_address && !deliveryAddress) {
             setDeliveryAddress(prefs.preferences.saved_delivery_address)
           }
         }
       } catch {}
     } catch (error) {
       console.error('Dashboard load error:', error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -166,7 +239,7 @@ export default function DashboardScreen() {
 
     setIsOrdering(true)
     try {
-      const order = await orderAPI.create({
+      await orderAPI.create({
         provider_id: selectedProvider.id,
         cylinder_type: selectedCylinder.size,
         quantity,
@@ -175,21 +248,17 @@ export default function DashboardScreen() {
         payment_method: paymentMethod === 'cash' ? 'cash' : 'mobile_money',
       })
 
-      // Save preferences
       await preferencesAPI.upsert({
         preferred_cylinder_type: selectedCylinder.size,
         preferred_provider_id: selectedProvider.id,
         saved_delivery_address: deliveryAddress.trim(),
       }).catch(() => {})
 
-      setLastOrderId(order.order?.id || order.id || '')
       setShowSuccess(true)
-      
-      // Auto-hide after 4 seconds
       setTimeout(() => {
         setShowSuccess(false)
         loadDashboardData()
-      }, 4000)
+      }, 3500)
       
     } catch (error: any) {
       Alert.alert('Order Failed', error.message || 'Please try again')
@@ -202,46 +271,69 @@ export default function DashboardScreen() {
   const deliveryFee = 20
   const grandTotal = totalPrice + deliveryFee
 
-  const bottomSheetHeight = bottomSheetAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [BOTTOM_SHEET_MIN, BOTTOM_SHEET_MAX],
-  })
+  // Location Permission Modal
+  if (showLocationModal) {
+    return (
+      <Modal visible transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIcon}>
+              <MapPinned size={40} color={zamgasTheme.colors.premium.gold} />
+            </View>
+            <Text style={styles.modalTitle}>Enable Location</Text>
+            <Text style={styles.modalText}>
+              ZAMGAS needs your location to find nearby LPG providers and deliver to your address.
+            </Text>
+            <TouchableOpacity style={styles.modalButton} onPress={handleLocationPermission}>
+              <MapPin size={18} color="white" />
+              <Text style={styles.modalButtonText}>Allow Location</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.modalSkip}
+              onPress={() => {
+                setShowLocationModal(false)
+                setIsLoading(false)
+              }}
+            >
+              <Text style={styles.modalSkipText}>Skip for now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    )
+  }
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <View style={styles.loadingLogo}>
-          <Zap size={40} color={zamgasTheme.colors.premium.burgundy} />
+          <Zap size={36} color={zamgasTheme.colors.premium.burgundy} />
         </View>
         <Text style={styles.loadingText}>Finding providers...</Text>
-        <ActivityIndicator size="small" color={zamgasTheme.colors.premium.gold} style={{ marginTop: 16 }} />
+        <ActivityIndicator size="small" color={zamgasTheme.colors.premium.gold} style={{ marginTop: 12 }} />
       </View>
     )
   }
 
-  // Success Overlay
+  // Success Screen
   if (showSuccess) {
     return (
       <View style={styles.successOverlay}>
         <View style={styles.successCard}>
           <View style={styles.successIcon}>
-            <CheckCircle size={64} color={zamgasTheme.colors.semantic.success} />
+            <CheckCircle size={56} color={zamgasTheme.colors.semantic.success} />
           </View>
           <Text style={styles.successTitle}>Order Placed! 🔥</Text>
-          <Text style={styles.successSubtitle}>Your gas is on the way</Text>
+          <Text style={styles.successSubtitle}>Est. delivery: 30-60 mins</Text>
           
           <View style={styles.successDetails}>
             <View style={styles.successRow}>
-              <Package size={18} color={zamgasTheme.colors.premium.gold} />
-              <Text style={styles.successText}>{selectedCylinder.size} × {quantity}</Text>
+              <Package size={16} color={zamgasTheme.colors.premium.gold} />
+              <Text style={styles.successText}>{selectedCylinder.size} × {quantity} — K{grandTotal}</Text>
             </View>
             <View style={styles.successRow}>
-              <MapPin size={18} color={zamgasTheme.colors.premium.gold} />
+              <MapPin size={16} color={zamgasTheme.colors.premium.gold} />
               <Text style={styles.successText} numberOfLines={1}>{deliveryAddress}</Text>
-            </View>
-            <View style={styles.successRow}>
-              <Truck size={18} color={zamgasTheme.colors.premium.gold} />
-              <Text style={styles.successText}>Est. 30-60 mins</Text>
             </View>
           </View>
 
@@ -252,7 +344,7 @@ export default function DashboardScreen() {
               router.push('/(tabs)/orders')
             }}
           >
-            <Navigation size={18} color="white" />
+            <Navigation size={16} color="white" />
             <Text style={styles.trackButtonText}>Track Order</Text>
           </TouchableOpacity>
         </View>
@@ -262,7 +354,7 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Map Section - 40% of screen */}
+      {/* Map Section */}
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
@@ -273,7 +365,6 @@ export default function DashboardScreen() {
           showsMyLocationButton={false}
           customMapStyle={darkMapStyle}
         >
-          {/* Provider Markers */}
           {providers.map((provider) => (
             provider.latitude && provider.longitude && (
               <Marker
@@ -288,51 +379,49 @@ export default function DashboardScreen() {
                   styles.markerContainer,
                   selectedProvider?.id === provider.id && styles.markerSelected
                 ]}>
-                  <Zap size={16} color={selectedProvider?.id === provider.id ? zamgasTheme.colors.premium.burgundy : 'white'} />
+                  <Zap size={14} color={selectedProvider?.id === provider.id ? zamgasTheme.colors.premium.burgundy : 'white'} />
                 </View>
               </Marker>
             )
           ))}
         </MapView>
 
-        {/* Map Overlay - Provider Card */}
+        {/* Header */}
         <SafeAreaView style={styles.mapOverlay} edges={['top']}>
           <View style={styles.mapHeader}>
             <View style={styles.logoSmall}>
-              <Zap size={20} color={zamgasTheme.colors.premium.burgundy} />
+              <Zap size={18} color={zamgasTheme.colors.premium.burgundy} />
             </View>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.welcomeText}>Hi, {user?.name?.split(' ')[0]} 👋</Text>
-              <Text style={styles.taglineText}>Order LPG in 60 seconds</Text>
+              <Text style={styles.taglineText} numberOfLines={1}>{locationAddress || 'Getting location...'}</Text>
             </View>
           </View>
         </SafeAreaView>
 
-        {/* Active Order Banner */}
+        {/* Active Order */}
         {activeOrder && (
           <TouchableOpacity 
             style={styles.activeOrderBanner}
             onPress={() => router.push('/(tabs)/orders')}
           >
-            <View style={styles.activeOrderPulse} />
-            <Truck size={18} color={zamgasTheme.colors.premium.gold} />
+            <View style={styles.pulse} />
+            <Truck size={16} color={zamgasTheme.colors.premium.gold} />
             <Text style={styles.activeOrderText}>
-              {activeOrder.status === 'in-transit' ? '🚚 En Route' : '⏳ Processing'}
+              {activeOrder.status === 'in-transit' ? 'En Route' : 'Processing'}
             </Text>
             <Text style={styles.activeOrderLink}>Track →</Text>
           </TouchableOpacity>
         )}
 
-        {/* Selected Provider Info */}
+        {/* Provider Chip */}
         {selectedProvider && (
           <View style={styles.providerChip}>
-            <View style={styles.providerChipIcon}>
-              <Zap size={14} color={zamgasTheme.colors.premium.gold} />
-            </View>
+            <Zap size={12} color={zamgasTheme.colors.premium.gold} />
             <Text style={styles.providerChipName}>{selectedProvider.name}</Text>
             {selectedProvider.rating && (
               <View style={styles.ratingChip}>
-                <Star size={10} color={zamgasTheme.colors.premium.gold} fill={zamgasTheme.colors.premium.gold} />
+                <Star size={9} color={zamgasTheme.colors.premium.gold} fill={zamgasTheme.colors.premium.gold} />
                 <Text style={styles.ratingText}>{selectedProvider.rating}</Text>
               </View>
             )}
@@ -341,174 +430,157 @@ export default function DashboardScreen() {
       </View>
 
       {/* Bottom Sheet */}
-      <Animated.View style={[styles.bottomSheet, { height: bottomSheetHeight }]}>
-        {/* Handle */}
-        <TouchableOpacity 
-          style={styles.sheetHandle}
-          onPress={() => setIsExpanded(!isExpanded)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.handleBar} />
-          {isExpanded ? (
-            <ChevronDown size={20} color={zamgasTheme.colors.premium.gray} />
-          ) : (
-            <ChevronUp size={20} color={zamgasTheme.colors.premium.gray} />
-          )}
-        </TouchableOpacity>
-
+      <View style={styles.bottomSheet}>
+        <View style={styles.handleBar} />
+        
         <ScrollView 
           style={styles.sheetContent}
           showsVerticalScrollIndicator={false}
-          bounces={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
         >
-          {/* Quick Cylinder Selection */}
+          {/* Cylinder Selection - Compact */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Cylinder</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.cylinderRow}>
-                {CYLINDER_SIZES.map((cyl) => (
-                  <TouchableOpacity
-                    key={cyl.size}
-                    style={[
-                      styles.cylinderPill,
-                      selectedCylinder.size === cyl.size && styles.cylinderPillActive,
-                    ]}
-                    onPress={() => setSelectedCylinder(cyl)}
-                  >
-                    <Text style={styles.cylinderEmoji}>{cyl.emoji}</Text>
-                    <Text style={[
-                      styles.cylinderSize,
-                      selectedCylinder.size === cyl.size && styles.cylinderSizeActive,
-                    ]}>
-                      {cyl.size}
-                    </Text>
-                    <Text style={[
-                      styles.cylinderPrice,
-                      selectedCylinder.size === cyl.size && styles.cylinderPriceActive,
-                    ]}>
-                      K{cyl.price}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-
-          {/* Quantity */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quantity</Text>
-            <View style={styles.quantityRow}>
-              <TouchableOpacity 
-                style={styles.qtyButton}
-                onPress={() => quantity > 1 && setQuantity(quantity - 1)}
-              >
-                <Minus size={20} color={quantity <= 1 ? zamgasTheme.colors.premium.gray : 'white'} />
-              </TouchableOpacity>
-              <Text style={styles.qtyText}>{quantity}</Text>
-              <TouchableOpacity 
-                style={styles.qtyButton}
-                onPress={() => setQuantity(quantity + 1)}
-              >
-                <Plus size={20} color="white" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Delivery Address */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Delivery Address</Text>
-            <View style={styles.addressInput}>
-              <MapPin size={18} color={zamgasTheme.colors.premium.gold} />
-              <TextInput
-                style={styles.addressText}
-                placeholder="Enter delivery address..."
-                placeholderTextColor={zamgasTheme.colors.premium.gray}
-                value={deliveryAddress}
-                onChangeText={setDeliveryAddress}
-                multiline
-              />
-            </View>
-          </View>
-
-          {/* Payment Method */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Payment</Text>
-            <View style={styles.paymentGrid}>
-              {PAYMENT_METHODS.map((method) => (
+            <Text style={styles.sectionTitle}>Select Size</Text>
+            <View style={styles.cylinderRow}>
+              {CYLINDER_SIZES.map((cyl) => (
                 <TouchableOpacity
-                  key={method.id}
+                  key={cyl.size}
                   style={[
-                    styles.paymentCard,
-                    paymentMethod === method.id && styles.paymentCardActive,
+                    styles.cylinderPill,
+                    selectedCylinder.size === cyl.size && styles.cylinderPillActive,
                   ]}
-                  onPress={() => setPaymentMethod(method.id)}
+                  onPress={() => setSelectedCylinder(cyl)}
                 >
-                  {method.icon ? (
-                    <Text style={styles.paymentIcon}>{method.icon}</Text>
-                  ) : method.logo ? (
-                    <Image source={{ uri: method.logo }} style={styles.paymentLogo} />
-                  ) : (
-                    <View style={[styles.paymentLogoPlaceholder, { backgroundColor: method.color }]}>
-                      <Text style={styles.paymentLogoText}>{method.name[0]}</Text>
-                    </View>
-                  )}
                   <Text style={[
-                    styles.paymentName,
-                    paymentMethod === method.id && styles.paymentNameActive,
+                    styles.cylinderSize,
+                    selectedCylinder.size === cyl.size && styles.cylinderSizeActive,
                   ]}>
-                    {method.name}
+                    {cyl.size}
+                  </Text>
+                  <Text style={[
+                    styles.cylinderPrice,
+                    selectedCylinder.size === cyl.size && styles.cylinderPriceActive,
+                  ]}>
+                    K{cyl.price}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
 
-          {/* Order Summary & Button */}
-          <View style={styles.orderSection}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>{selectedCylinder.size} × {quantity}</Text>
-              <Text style={styles.summaryValue}>K{totalPrice}</Text>
+          {/* Quantity + Address Row */}
+          <View style={styles.rowSection}>
+            {/* Quantity */}
+            <View style={styles.qtySection}>
+              <Text style={styles.sectionTitle}>Qty</Text>
+              <View style={styles.qtyRow}>
+                <TouchableOpacity 
+                  style={styles.qtyBtn}
+                  onPress={() => quantity > 1 && setQuantity(quantity - 1)}
+                >
+                  <Minus size={16} color={quantity <= 1 ? zamgasTheme.colors.premium.gray : 'white'} />
+                </TouchableOpacity>
+                <Text style={styles.qtyText}>{quantity}</Text>
+                <TouchableOpacity 
+                  style={styles.qtyBtn}
+                  onPress={() => setQuantity(quantity + 1)}
+                >
+                  <Plus size={16} color="white" />
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Delivery</Text>
-              <Text style={styles.summaryValue}>K{deliveryFee}</Text>
+
+            {/* Address */}
+            <View style={styles.addressSection}>
+              <Text style={styles.sectionTitle}>Deliver to</Text>
+              <View style={styles.addressInput}>
+                <MapPin size={14} color={zamgasTheme.colors.premium.gold} />
+                <TextInput
+                  style={styles.addressText}
+                  placeholder="Enter address..."
+                  placeholderTextColor={zamgasTheme.colors.premium.gray}
+                  value={deliveryAddress}
+                  onChangeText={setDeliveryAddress}
+                  numberOfLines={1}
+                />
+              </View>
             </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryRow}>
+          </View>
+
+          {/* Payment - Compact */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Payment</Text>
+            <View style={styles.paymentRow}>
+              <TouchableOpacity
+                style={[styles.paymentChip, paymentMethod === 'cash' && styles.paymentChipActive]}
+                onPress={() => setPaymentMethod('cash')}
+              >
+                <Text style={styles.paymentEmoji}>💵</Text>
+                <Text style={[styles.paymentLabel, paymentMethod === 'cash' && styles.paymentLabelActive]}>Cash</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.paymentChip, paymentMethod === 'mtn' && styles.paymentChipActive]}
+                onPress={() => setPaymentMethod('mtn')}
+              >
+                <Image source={require('@/assets/images/mtn_money.png')} style={styles.paymentIcon} />
+                <Text style={[styles.paymentLabel, paymentMethod === 'mtn' && styles.paymentLabelActive]}>MTN</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.paymentChip, paymentMethod === 'airtel' && styles.paymentChipActive]}
+                onPress={() => setPaymentMethod('airtel')}
+              >
+                <View style={[styles.paymentIconPlaceholder, { backgroundColor: '#ED1C24' }]}>
+                  <Text style={styles.paymentIconText}>A</Text>
+                </View>
+                <Text style={[styles.paymentLabel, paymentMethod === 'airtel' && styles.paymentLabelActive]}>Airtel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.paymentChip, paymentMethod === 'zamtel' && styles.paymentChipActive]}
+                onPress={() => setPaymentMethod('zamtel')}
+              >
+                <View style={[styles.paymentIconPlaceholder, { backgroundColor: '#00A651' }]}>
+                  <Text style={styles.paymentIconText}>Z</Text>
+                </View>
+                <Text style={[styles.paymentLabel, paymentMethod === 'zamtel' && styles.paymentLabelActive]}>Zamtel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Order Button */}
+          <View style={styles.orderRow}>
+            <View style={styles.totalCol}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>K{grandTotal}</Text>
             </View>
-            
             <TouchableOpacity 
               style={[styles.orderButton, isOrdering && styles.orderButtonDisabled]}
               onPress={handlePlaceOrder}
               disabled={isOrdering}
             >
               {isOrdering ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color="white" size="small" />
               ) : (
                 <>
-                  <Zap size={20} color="white" fill="white" />
-                  <Text style={styles.orderButtonText}>Place Order</Text>
+                  <Zap size={18} color="white" fill="white" />
+                  <Text style={styles.orderButtonText}>Order Now</Text>
                 </>
               )}
             </TouchableOpacity>
           </View>
-
-          <View style={{ height: 40 }} />
         </ScrollView>
-      </Animated.View>
+      </View>
     </View>
   )
 }
 
-// Dark map style
 const darkMapStyle = [
   { elementType: 'geometry', stylers: [{ color: '#1d1d1d' }] },
   { elementType: 'labels.text.fill', stylers: [{ color: '#8c8c8c' }] },
   { elementType: 'labels.text.stroke', stylers: [{ color: '#1d1d1d' }] },
   { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2c2c2c' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1d1d1d' }] },
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e0e0e' }] },
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
 ]
@@ -518,6 +590,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: zamgasTheme.colors.premium.burgundyDark,
   },
+  
+  // Loading
   loadingContainer: {
     flex: 1,
     backgroundColor: zamgasTheme.colors.premium.burgundyDark,
@@ -525,18 +599,79 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+    width: 72,
+    height: 72,
+    borderRadius: 18,
     backgroundColor: zamgasTheme.colors.premium.gold,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     color: zamgasTheme.colors.premium.gold,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
+    marginTop: 14,
+  },
+
+  // Location Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: zamgasTheme.colors.premium.burgundy,
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+  },
+  modalIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: `${zamgasTheme.colors.premium.gold}20`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    color: zamgasTheme.colors.premium.gold,
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  modalText: {
+    color: zamgasTheme.colors.premium.gray,
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: zamgasTheme.colors.premium.red,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    marginTop: 24,
+    width: '100%',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalSkip: {
     marginTop: 16,
+  },
+  modalSkipText: {
+    color: zamgasTheme.colors.premium.gray,
+    fontSize: 13,
   },
 
   // Map
@@ -556,107 +691,101 @@ const styles = StyleSheet.create({
   mapHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    gap: 12,
+    padding: 14,
+    gap: 10,
   },
   logoSmall: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     backgroundColor: zamgasTheme.colors.premium.gold,
     justifyContent: 'center',
     alignItems: 'center',
   },
   welcomeText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   taglineText: {
     color: zamgasTheme.colors.premium.gray,
-    fontSize: 12,
+    fontSize: 11,
   },
   markerContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: zamgasTheme.colors.premium.red,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: 'white',
   },
   markerSelected: {
     backgroundColor: zamgasTheme.colors.premium.gold,
-    transform: [{ scale: 1.2 }],
+    transform: [{ scale: 1.15 }],
   },
   activeOrderBanner: {
     position: 'absolute',
-    bottom: 70,
-    left: 16,
-    right: 16,
+    bottom: 56,
+    left: 14,
+    right: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: zamgasTheme.colors.premium.burgundy,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
     borderLeftWidth: 3,
     borderLeftColor: zamgasTheme.colors.premium.gold,
   },
-  activeOrderPulse: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  pulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: zamgasTheme.colors.semantic.success,
   },
   activeOrderText: {
     flex: 1,
     color: 'white',
     fontWeight: '600',
+    fontSize: 13,
   },
   activeOrderLink: {
     color: zamgasTheme.colors.premium.gold,
     fontWeight: '600',
+    fontSize: 12,
   },
   providerChip: {
     position: 'absolute',
-    bottom: 16,
+    bottom: 14,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     backgroundColor: zamgasTheme.colors.premium.burgundy,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-  },
-  providerChipIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: `${zamgasTheme.colors.premium.gold}20`,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
   },
   providerChipName: {
     color: 'white',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 12,
   },
   ratingChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 2,
     backgroundColor: zamgasTheme.colors.premium.gold,
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   ratingText: {
     color: zamgasTheme.colors.premium.burgundy,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
 
@@ -666,66 +795,57 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    height: BOTTOM_SHEET_HEIGHT,
     backgroundColor: zamgasTheme.colors.premium.burgundyDark,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    overflow: 'hidden',
-  },
-  sheetHandle: {
-    alignItems: 'center',
-    paddingVertical: 12,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   handleBar: {
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
     backgroundColor: zamgasTheme.colors.premium.burgundyLight,
-    marginBottom: 4,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 6,
   },
   sheetContent: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
 
   // Sections
   section: {
-    marginBottom: 20,
+    marginBottom: 14,
   },
   sectionTitle: {
     color: zamgasTheme.colors.premium.gold,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   
-  // Cylinders
+  // Cylinders - Compact
   cylinderRow: {
     flexDirection: 'row',
-    gap: 10,
-    paddingRight: 16,
+    gap: 8,
   },
   cylinderPill: {
+    flex: 1,
     alignItems: 'center',
     backgroundColor: zamgasTheme.colors.premium.burgundy,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: zamgasTheme.colors.premium.burgundyLight,
-    minWidth: 80,
   },
   cylinderPillActive: {
     backgroundColor: zamgasTheme.colors.premium.red,
     borderColor: zamgasTheme.colors.premium.gold,
-    borderWidth: 2,
-  },
-  cylinderEmoji: {
-    fontSize: 20,
-    marginBottom: 4,
   },
   cylinderSize: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
   },
   cylinderSizeActive: {
@@ -733,133 +853,123 @@ const styles = StyleSheet.create({
   },
   cylinderPrice: {
     color: zamgasTheme.colors.premium.gray,
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 11,
   },
   cylinderPriceActive: {
     color: 'white',
   },
 
-  // Quantity
-  quantityRow: {
+  // Quantity + Address Row
+  rowSection: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  qtySection: {
+    width: 100,
+  },
+  qtyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 24,
+    gap: 8,
   },
-  qtyButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+  qtyBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: zamgasTheme.colors.premium.burgundy,
     justifyContent: 'center',
     alignItems: 'center',
   },
   qtyText: {
     color: 'white',
-    fontSize: 28,
+    fontSize: 18,
     fontWeight: '700',
-    minWidth: 50,
+    minWidth: 24,
     textAlign: 'center',
   },
-
-  // Address
+  addressSection: {
+    flex: 1,
+  },
   addressInput: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     backgroundColor: zamgasTheme.colors.premium.burgundy,
-    borderRadius: 12,
-    padding: 14,
-    gap: 10,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 6,
   },
   addressText: {
     flex: 1,
     color: 'white',
-    fontSize: 14,
-    minHeight: 40,
+    fontSize: 12,
   },
 
-  // Payment
-  paymentGrid: {
+  // Payment - Compact
+  paymentRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
-  paymentCard: {
-    width: (SCREEN_WIDTH - 52) / 2,
-    flexDirection: 'row',
+  paymentChip: {
+    flex: 1,
     alignItems: 'center',
-    gap: 10,
     backgroundColor: zamgasTheme.colors.premium.burgundy,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: zamgasTheme.colors.premium.burgundyLight,
   },
-  paymentCardActive: {
+  paymentChipActive: {
     borderColor: zamgasTheme.colors.premium.gold,
-    backgroundColor: `${zamgasTheme.colors.premium.gold}10`,
+    backgroundColor: `${zamgasTheme.colors.premium.gold}15`,
+  },
+  paymentEmoji: {
+    fontSize: 18,
   },
   paymentIcon: {
-    fontSize: 24,
-  },
-  paymentLogo: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 4,
     resizeMode: 'contain',
   },
-  paymentLogoPlaceholder: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
+  paymentIconPlaceholder: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  paymentLogoText: {
+  paymentIconText: {
     color: 'white',
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 12,
   },
-  paymentName: {
+  paymentLabel: {
     color: zamgasTheme.colors.premium.gray,
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 4,
   },
-  paymentNameActive: {
+  paymentLabelActive: {
     color: zamgasTheme.colors.premium.gold,
   },
 
-  // Order Summary
-  orderSection: {
-    backgroundColor: zamgasTheme.colors.premium.burgundy,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 8,
-  },
-  summaryRow: {
+  // Order Row
+  orderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    backgroundColor: zamgasTheme.colors.premium.burgundy,
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 4,
   },
-  summaryLabel: {
-    color: zamgasTheme.colors.premium.gray,
-    fontSize: 14,
-  },
-  summaryValue: {
-    color: 'white',
-    fontSize: 14,
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: zamgasTheme.colors.premium.burgundyLight,
-    marginVertical: 8,
+  totalCol: {
+    marginRight: 16,
   },
   totalLabel: {
-    color: zamgasTheme.colors.premium.gold,
-    fontSize: 16,
-    fontWeight: '700',
+    color: zamgasTheme.colors.premium.gray,
+    fontSize: 11,
   },
   totalValue: {
     color: zamgasTheme.colors.premium.gold,
@@ -867,21 +977,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   orderButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     backgroundColor: zamgasTheme.colors.premium.red,
-    borderRadius: 14,
-    paddingVertical: 16,
-    marginTop: 16,
+    borderRadius: 10,
+    paddingVertical: 14,
   },
   orderButtonDisabled: {
     opacity: 0.7,
   },
   orderButtonText: {
     color: 'white',
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700',
   },
 
@@ -891,64 +1001,64 @@ const styles = StyleSheet.create({
     backgroundColor: zamgasTheme.colors.premium.burgundyDark,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 20,
   },
   successCard: {
     width: '100%',
     backgroundColor: zamgasTheme.colors.premium.burgundy,
-    borderRadius: 24,
-    padding: 32,
+    borderRadius: 20,
+    padding: 28,
     alignItems: 'center',
   },
   successIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: `${zamgasTheme.colors.semantic.success}20`,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   successTitle: {
     color: zamgasTheme.colors.premium.gold,
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
   },
   successSubtitle: {
     color: zamgasTheme.colors.premium.gray,
-    fontSize: 16,
+    fontSize: 14,
     marginTop: 4,
   },
   successDetails: {
     width: '100%',
-    marginTop: 24,
-    gap: 12,
+    marginTop: 20,
+    gap: 10,
   },
   successRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   successText: {
     color: 'white',
-    fontSize: 15,
+    fontSize: 13,
     flex: 1,
   },
   trackButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     backgroundColor: zamgasTheme.colors.premium.red,
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    marginTop: 28,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    marginTop: 24,
     width: '100%',
   },
   trackButtonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
   },
 })
