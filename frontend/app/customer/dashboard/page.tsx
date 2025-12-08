@@ -220,7 +220,7 @@ export default function CustomerDashboard() {
       const randomIndex = Math.floor(Math.random() * providersData.length)
       const randomProvider = providersData[randomIndex]
       setSelectedProvider(randomProvider)
-      toast.success(`Selected ${randomProvider.name} as your provider`)
+      // Removed annoying toast - provider is shown on screen anyway
     }
   }
 
