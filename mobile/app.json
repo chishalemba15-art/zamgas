@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "ZAMGAS",
+    "slug": "zamgas-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "zamgas",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#260606"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zamgas.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "ZAMGAS needs your location to find nearby LPG providers and deliver to your address.",
+        "NSLocationAlwaysUsageDescription": "ZAMGAS uses your location to track deliveries."
+      }
+    },
+    "android": {
+      "package": "com.zamgas.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#260606"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow ZAMGAS to use your location to find providers and deliver orders."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "zamgas-mobile"
+      }
+    }
+  }
+}
