@@ -45,17 +45,18 @@ export function SupportButton() {
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/20 z-40 md:hidden"
+          className="fixed inset-0 bg-black/40 z-40"
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      {/* Support Menu */}
+      {/* Support Menu - Dark Theme */}
       {isOpen && (
         <div
-          className="fixed bottom-24 right-4 bg-white rounded-2xl shadow-2xl z-50 animate-in slide-in-from-bottom-5 fade-in duration-200"
+          className="fixed bottom-24 right-4 rounded-2xl shadow-2xl z-50 animate-in slide-in-from-bottom-5 fade-in duration-200"
           style={{
-            border: `1px solid ${zamgasTheme.colors.neutral[200]}`,
+            background: zamgasTheme.colors.premium.burgundy,
+            border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
           }}
         >
           <div className="p-3 space-y-2 min-w-[200px]">
@@ -66,16 +67,16 @@ export function SupportButton() {
                   option.action()
                   setIsOpen(false)
                 }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl transition-all hover:scale-105 active:scale-95"
+                className="w-full flex items-center gap-3 p-3 rounded-xl transition-all active:scale-95"
                 style={{
-                  background: zamgasTheme.colors.neutral[50],
+                  background: zamgasTheme.colors.premium.burgundyLight,
                 }}
               >
-                <span className="text-2xl">{option.icon}</span>
+                <span className="text-xl">{option.icon}</span>
                 <span
                   className="text-sm font-medium"
                   style={{
-                    color: zamgasTheme.colors.semantic.textPrimary,
+                    color: zamgasTheme.colors.premium.gold,
                     fontFamily: zamgasTheme.typography.fontFamily.body,
                   }}
                 >
@@ -87,19 +88,20 @@ export function SupportButton() {
         </div>
       )}
 
-      {/* FAB Button */}
+      {/* FAB Button - Smaller, Dark Theme */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-50"
+        className="fixed bottom-20 right-4 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-50"
         style={{
-          background: zamgasTheme.gradients.primary,
-          boxShadow: zamgasTheme.shadows.large,
+          background: zamgasTheme.colors.premium.burgundy,
+          border: `2px solid ${zamgasTheme.colors.premium.gold}`,
+          boxShadow: `0 4px 16px ${zamgasTheme.colors.premium.burgundy}80`,
         }}
       >
         {isOpen ? (
-          <X className="h-6 w-6 text-white" />
+          <X className="h-5 w-5" style={{ color: zamgasTheme.colors.premium.gold }} />
         ) : (
-          <MessageCircle className="h-6 w-6 text-white" />
+          <MessageCircle className="h-5 w-5" style={{ color: zamgasTheme.colors.premium.gold }} />
         )}
       </button>
     </>

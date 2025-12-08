@@ -539,128 +539,112 @@ export default function CustomerDashboard() {
       />
 
       <DashboardLayout title="ZamGas Dashboard">
-        {/* Active Order Notification - Minimal & Top */}
+        {/* Active Order Notification - Compact Banner */}
         {userOrders.find(o => ['in-transit', 'accepted', 'pending'].includes(o.status)) && (
           (() => {
             const activeOrder = userOrders.find(o => o.status === 'in-transit') || userOrders.find(o => o.status === 'accepted') || userOrders.find(o => o.status === 'pending')
             if (!activeOrder) return null;
             
-            const hasCourier = activeOrder.courier_id && activeOrder.courier_name;
-            
             return (
               <div 
-                className="mx-[-1.5rem] mt-[-1.5rem] mb-6 px-6 py-4 text-white hover:bg-opacity-95 transition-all cursor-pointer shadow-md relative z-20"
+                className="mx-[-1.5rem] mt-[-1.5rem] mb-4 px-4 py-2.5 text-white cursor-pointer relative z-20"
                 style={{ 
-                  background: activeOrder.status === 'in-transit' 
-                    ? `linear-gradient(to right, ${zamgasTheme.colors.semantic.info}, #3B82F6)` 
-                    : activeOrder.status === 'accepted'
-                    ? `linear-gradient(to right, ${zamgasTheme.colors.secondary.amber}, #F59E0B)`
-                    : `linear-gradient(to right, ${zamgasTheme.colors.accent.teal}, #14B8A6)`
+                  background: zamgasTheme.colors.premium.burgundyLight,
+                  borderBottom: `2px solid ${activeOrder.status === 'in-transit' ? zamgasTheme.colors.semantic.info : zamgasTheme.colors.premium.gold}`
                 }}
                 onClick={() => router.push('/customer/orders')}
               >
-                 <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-3">
-                     <div className="p-2 bg-white/20 rounded-full animate-pulse">
-                       <Truck className="h-5 w-5 text-white" />
-                     </div>
-                     <div>
-                       <div className="flex items-center gap-2">
-                         <p className="font-bold text-sm tracking-wide uppercase">
-                           {activeOrder.status === 'in-transit' ? 'Delivery in Progress' : 
-                            activeOrder.status === 'accepted' ? 'Order Accepted' : 
-                            'Order Processing'}
-                         </p>
-                         <span className="px-1.5 py-0.5 bg-white/20 rounded text-[10px] font-mono">#{activeOrder.id.slice(0,6)}</span>
-                       </div>
-                       <p className="text-xs text-white/90 font-medium mt-0.5">
-                         {activeOrder.status === 'in-transit' 
-                           ? `Your gas is on the way! ${activeOrder.current_address ? `Near: ${activeOrder.current_address}` : ''}` 
-                           : activeOrder.status === 'accepted'
-                           ? 'Courier is preparing your delivery.'
-                           : hasCourier 
-                           ? `Courier assigned: ${activeOrder.courier_name}`
-                           : 'Finding you the best courier...'}
-                       </p>
-                       {/* Courier Details */}
-                       {hasCourier && (
-                         <div className="flex items-center gap-3 mt-2">
-                           <div className="flex items-center gap-1.5 bg-white/20 px-2 py-1 rounded-lg">
-                             <div className="w-5 h-5 rounded-full bg-white/30 flex items-center justify-center text-[10px] font-bold">
-                               {activeOrder.courier_name?.charAt(0).toUpperCase()}
-                             </div>
-                             <span className="text-xs font-medium">{activeOrder.courier_name}</span>
-                           </div>
-                           {activeOrder.courier_phone && (
-                             <a 
-                               href={`tel:${activeOrder.courier_phone}`}
-                               onClick={(e) => e.stopPropagation()}
-                               className="flex items-center gap-1.5 bg-white/30 hover:bg-white/40 px-2 py-1 rounded-lg transition-colors"
-                             >
-                               <Smartphone className="h-3 w-3" />
-                               <span className="text-xs font-medium">{activeOrder.courier_phone}</span>
-                             </a>
-                           )}
-                         </div>
-                       )}
-                     </div>
-                   </div>
-                   <div className="flex items-center gap-2 text-xs font-bold bg-white/20 px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/30 transition-colors">
-                     Track
-                     <Navigation className="h-3 w-3" />
-                   </div>
-                 </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="p-1.5 rounded-lg animate-pulse"
+                      style={{ background: activeOrder.status === 'in-transit' ? zamgasTheme.colors.semantic.info : `${zamgasTheme.colors.premium.gold}30` }}
+                    >
+                      <Truck className="h-4 w-4" style={{ color: activeOrder.status === 'in-transit' ? 'white' : zamgasTheme.colors.premium.gold }} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs" style={{ color: zamgasTheme.colors.premium.gold }}>
+                        {activeOrder.status === 'in-transit' ? '🚚 En Route' : 
+                         activeOrder.status === 'accepted' ? '✓ Accepted' : 
+                         '⏳ Processing'}
+                      </p>
+                      <p className="text-[10px]" style={{ color: zamgasTheme.colors.premium.gray }}>
+                        Order #{activeOrder.id.slice(0,6)}
+                      </p>
+                    </div>
+                  </div>
+                  <div 
+                    className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg"
+                    style={{ background: `${zamgasTheme.colors.premium.gold}20`, color: zamgasTheme.colors.premium.gold }}
+                  >
+                    Track <Navigation className="h-3 w-3" />
+                  </div>
+                </div>
               </div>
             )
           })()
         )}
 
-        {/* Hero Section - Premium Dark Theme */}
+        {/* Hero Section - Minimized on Mobile */}
         <div
-          className="relative -mx-6 -mt-6 mb-6 p-5 sm:p-8 pb-8 sm:pb-10 rounded-b-3xl overflow-hidden"
+          className="relative -mx-6 -mt-2 mb-4 p-4 sm:p-8 pb-4 sm:pb-10 rounded-b-2xl sm:rounded-b-3xl overflow-hidden"
           style={{
             background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.burgundy} 0%, ${zamgasTheme.colors.premium.burgundyDark} 100%)`,
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
           }}
         >
-          {/* Pattern overlay */}
-          <div className="absolute inset-0 opacity-10" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 20 L35 30 L30 40 L25 30 Z M20 30 L30 25 L40 30 L30 35 Z' fill='%23FBC609' fill-opacity='0.5'/%3E%3C/svg%3E")`,
-            backgroundSize: '40px 40px'
-          }} />
-
           <div className="relative z-10 text-white">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{
-                      background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
-                      boxShadow: `0 4px 12px ${zamgasTheme.colors.premium.red}40`,
-                    }}
-                  >
-                    <Zap className="h-5 w-5" />
-                  </div>
-                  <h1 className="text-2xl sm:text-3xl font-bold" style={{ 
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center"
+                  style={{
+                    background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
+                    boxShadow: `0 4px 12px ${zamgasTheme.colors.premium.red}40`,
+                  }}
+                >
+                  <Zap className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div>
+                  <h1 className="text-lg sm:text-2xl font-bold" style={{ 
                     fontFamily: zamgasTheme.typography.fontFamily.display,
                     color: zamgasTheme.colors.premium.gold
                   }}>
-                    Order Gas Now
+                    Order Gas
                   </h1>
+                  <p className="text-xs sm:text-sm" style={{ color: zamgasTheme.colors.premium.gray }}>
+                    Fast delivery
+                  </p>
                 </div>
-                <p className="text-sm sm:text-base" style={{ 
-                  fontFamily: zamgasTheme.typography.fontFamily.body,
-                  color: zamgasTheme.colors.premium.gray 
-                }}>
-                  Fast delivery to your doorstep
-                </p>
               </div>
-              <CleanEnergyBadge variant="inline" />
+              
+              {/* Location pill - Mobile */}
+              {userLocation && (
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs cursor-pointer"
+                  style={{
+                    background: zamgasTheme.colors.premium.burgundyLight,
+                    border: `1px solid ${zamgasTheme.colors.premium.gold}30`,
+                  }}
+                  onClick={() => {
+                    const newAddress = prompt('Enter your delivery address:', orderForm.delivery_address)
+                    if (newAddress) {
+                      setOrderForm(prev => ({ ...prev, delivery_address: newAddress }))
+                      localStorage.setItem('savedDeliveryAddress', newAddress)
+                      toast.success('Address updated!')
+                    }
+                  }}
+                >
+                  <MapPin className="h-3 w-3" style={{ color: zamgasTheme.colors.premium.gold }} />
+                  <span className="truncate max-w-[100px] sm:max-w-none" style={{ color: zamgasTheme.colors.premium.gray }}>
+                    {orderForm.delivery_address ? orderForm.delivery_address.slice(0, 20) + '...' : 'Set address'}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Quick stats */}
-            <div className="grid grid-cols-3 gap-3 mt-5">
+            {/* Quick stats - Hidden on mobile */}
+            <div className="hidden sm:grid grid-cols-3 gap-3 mt-5">
               <div
                 className="p-3 rounded-xl text-center"
                 style={{
@@ -707,30 +691,6 @@ export default function CustomerDashboard() {
                 <p className="text-xs" style={{ color: zamgasTheme.colors.premium.gray }}>Efficient</p>
               </div>
             </div>
-
-            {/* Location Display - Editable */}
-            {userLocation && (
-              <div
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium mt-4 cursor-pointer hover:opacity-90 transition-opacity"
-                style={{
-                  background: zamgasTheme.colors.premium.burgundyLight,
-                  border: `1px solid ${zamgasTheme.colors.premium.gold}50`,
-                }}
-                onClick={() => {
-                  const newAddress = prompt('Enter your delivery address:', orderForm.delivery_address)
-                  if (newAddress) {
-                    setOrderForm(prev => ({ ...prev, delivery_address: newAddress }))
-                    localStorage.setItem('savedDeliveryAddress', newAddress)
-                    toast.success('Address updated!')
-                  }
-                }}
-              >
-                <MapPin className="h-3.5 w-3.5" style={{ color: zamgasTheme.colors.premium.gold }} />
-                <span style={{ color: zamgasTheme.colors.premium.gray }}>
-                  {orderForm.delivery_address || 'Set delivery address →'}
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -1491,31 +1451,72 @@ export default function CustomerDashboard() {
               <label className="text-xs font-medium mb-2 block" style={{ color: zamgasTheme.colors.premium.gray }}>
                 Payment Method
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: 'mobile_money', label: '📱 Mobile Money', icon: Smartphone },
-                  { value: 'cash', label: '💵 Cash', icon: Package },
-                ].map((method) => (
-                  <button
-                    key={method.value}
-                    onClick={() => setOrderForm({ ...orderForm, payment_method: method.value })}
-                    className="p-3 rounded-xl text-sm font-medium transition-all active:scale-95"
-                    style={{
-                      background: orderForm.payment_method === method.value 
-                        ? `${zamgasTheme.colors.premium.red}30`
-                        : zamgasTheme.colors.premium.burgundyLight,
-                      border: orderForm.payment_method === method.value 
-                        ? `2px solid ${zamgasTheme.colors.premium.gold}`
-                        : `1px solid ${zamgasTheme.colors.premium.gray}20`,
-                      color: orderForm.payment_method === method.value 
-                        ? zamgasTheme.colors.premium.gold
-                        : zamgasTheme.colors.premium.gray,
-                    }}
-                  >
-                    {method.label}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <button
+                  onClick={() => setOrderForm({ ...orderForm, payment_method: 'mobile_money' })}
+                  className="p-3 rounded-xl text-sm font-medium transition-all active:scale-95"
+                  style={{
+                    background: orderForm.payment_method === 'mobile_money' 
+                      ? `${zamgasTheme.colors.premium.red}30`
+                      : zamgasTheme.colors.premium.burgundyLight,
+                    border: orderForm.payment_method === 'mobile_money' 
+                      ? `2px solid ${zamgasTheme.colors.premium.gold}`
+                      : `1px solid ${zamgasTheme.colors.premium.gray}20`,
+                    color: orderForm.payment_method === 'mobile_money' 
+                      ? zamgasTheme.colors.premium.gold
+                      : zamgasTheme.colors.premium.gray,
+                  }}
+                >
+                  📱 Mobile Money
+                </button>
+                <button
+                  onClick={() => setOrderForm({ ...orderForm, payment_method: 'cash' })}
+                  className="p-3 rounded-xl text-sm font-medium transition-all active:scale-95"
+                  style={{
+                    background: orderForm.payment_method === 'cash' 
+                      ? `${zamgasTheme.colors.premium.red}30`
+                      : zamgasTheme.colors.premium.burgundyLight,
+                    border: orderForm.payment_method === 'cash' 
+                      ? `2px solid ${zamgasTheme.colors.premium.gold}`
+                      : `1px solid ${zamgasTheme.colors.premium.gray}20`,
+                    color: orderForm.payment_method === 'cash' 
+                      ? zamgasTheme.colors.premium.gold
+                      : zamgasTheme.colors.premium.gray,
+                  }}
+                >
+                  💵 Cash on Delivery
+                </button>
               </div>
+
+              {/* Mobile Money Providers */}
+              {orderForm.payment_method === 'mobile_money' && (
+                <div className="grid grid-cols-3 gap-2 mt-3">
+                  {[
+                    { id: 'mtn', name: 'MTN', icon: '/mtn_money.png' },
+                    { id: 'airtel', name: 'Airtel', icon: '/airtel_money.svg' },
+                    { id: 'zamtel', name: 'Zamtel', icon: '/zamtel_money.svg' },
+                  ].map((provider) => (
+                    <button
+                      key={provider.id}
+                      onClick={() => setMobileMoneyPhone(prev => prev.startsWith('+260') ? prev : '+260')}
+                      className="flex flex-col items-center gap-1 p-2 rounded-xl transition-all active:scale-95"
+                      style={{
+                        background: zamgasTheme.colors.premium.burgundyLight,
+                        border: `1px solid ${zamgasTheme.colors.premium.gray}20`,
+                      }}
+                    >
+                      <img 
+                        src={provider.icon} 
+                        alt={provider.name} 
+                        className="h-8 w-8 object-contain"
+                      />
+                      <span className="text-[10px]" style={{ color: zamgasTheme.colors.premium.gray }}>
+                        {provider.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Mobile Money Phone Input */}
