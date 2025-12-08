@@ -75,7 +75,7 @@ export default function CustomerDashboard() {
   const [isPremiumUser, setIsPremiumUser] = useState(false)
   const [userOrders, setUserOrders] = useState<Order[]>([])
   const [isSearchingProvider, setIsSearchingProvider] = useState(false)
-  const [isImpactCollapsed, setIsImpactCollapsed] = useState(false)
+  const [isImpactCollapsed, setIsImpactCollapsed] = useState(true)
   const [mobileMoneyPhone, setMobileMoneyPhone] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [currentDepositId, setCurrentDepositId] = useState('')
@@ -167,6 +167,27 @@ export default function CustomerDashboard() {
         toast.success('Location updated successfully!')
       } catch (error) {
         console.error('Failed to update location:', error)
+      }
+
+      // Reverse geocode to get address from coordinates
+      try {
+        const geocodeResponse = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.lat},${location.lng}&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8`
+        )
+        const geocodeData = await geocodeResponse.json()
+        
+        if (geocodeData.results && geocodeData.results.length > 0) {
+          const address = geocodeData.results[0].formatted_address
+          // Only update if no saved address exists
+          const savedAddress = localStorage.getItem('savedDeliveryAddress')
+          if (!savedAddress) {
+            setOrderForm(prev => ({ ...prev, delivery_address: address }))
+            localStorage.setItem('savedDeliveryAddress', address)
+            toast.success('Delivery address set from your location!')
+          }
+        }
+      } catch (error) {
+        console.error('Failed to reverse geocode:', error)
       }
 
       return location
@@ -1184,141 +1205,150 @@ export default function CustomerDashboard() {
         {/* Order Summary & Eco Impact */}
         <div className="lg:col-span-1 space-y-4 sm:space-y-6">
           {/* Collapsible Carbon Savings Card */}
-          <div className="md:block">
-            {/* Mobile Collapse Header */}
+          <div>
+            {/* Collapse Header - Both mobile and desktop */}
             <button
               onClick={() => setIsImpactCollapsed(!isImpactCollapsed)}
-              className="md:hidden w-full flex items-center justify-between p-4 rounded-t-2xl transition-all"
+              className="w-full flex items-center justify-between p-4 rounded-2xl transition-all"
               style={{
-                background: isImpactCollapsed ? zamgasTheme.colors.semantic.cardBg : 'transparent',
-                borderBottom: isImpactCollapsed ? `1px solid ${zamgasTheme.colors.neutral[200]}` : 'none',
+                background: zamgasTheme.colors.premium.burgundy,
+                border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
               }}
             >
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" style={{ color: zamgasTheme.colors.primary.forest }} />
+                <TrendingUp className="h-5 w-5" style={{ color: zamgasTheme.colors.premium.gold }} />
                 <span
                   className="font-bold"
                   style={{
-                    color: zamgasTheme.colors.semantic.textPrimary,
+                    color: '#FFFFFF',
                     fontFamily: zamgasTheme.typography.fontFamily.display,
                   }}
                 >
                   Your Impact
                 </span>
               </div>
-              <div className="text-sm" style={{ color: zamgasTheme.colors.semantic.textSecondary }}>
-                {isImpactCollapsed ? 'Show' : 'Hide'}
+              <div className="text-sm px-3 py-1 rounded-lg" style={{ 
+                color: zamgasTheme.colors.premium.gold,
+                background: zamgasTheme.colors.premium.burgundyLight,
+              }}>
+                {isImpactCollapsed ? 'Show ▼' : 'Hide ▲'}
               </div>
             </button>
             
-            {/* Carbon Savings Card - Collapsible on mobile */}
-            <div className={`${isImpactCollapsed ? 'hidden md:block' : 'block'}`}>
+            {/* Carbon Savings Card - Collapsible */}
+            <div className={`${isImpactCollapsed ? 'hidden' : 'block'} mt-2`}>
               <CarbonSavingsCard orders={userOrders} />
             </div>
           </div>
 
-          {/* Order Summary */}
-          <Card className="sticky top-20">
-            <CardHeader>
-              <h2 className="text-xl font-bold" style={{
-                color: zamgasTheme.colors.semantic.textPrimary,
+          {/* Order Summary - Premium Dark Theme */}
+          <div 
+            className="sticky top-20 rounded-2xl overflow-hidden"
+            style={{
+              background: zamgasTheme.colors.premium.burgundy,
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+              border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
+            }}
+          >
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-4" style={{
+                color: zamgasTheme.colors.premium.gold,
                 fontFamily: zamgasTheme.typography.fontFamily.display,
               }}>
                 Order Summary
               </h2>
-            </CardHeader>
-            <CardBody className="space-y-4">
-              <div
-                className="flex items-center gap-3 p-3 rounded-lg"
-                style={{ background: zamgasTheme.colors.primary.mintLight }}
-              >
-                <Zap className="h-8 w-8" style={{ color: zamgasTheme.colors.primary.forest }} />
-                <div>
-                  <p className="font-medium" style={{ color: zamgasTheme.colors.semantic.textPrimary }}>
-                    {orderForm.cylinder_type}
-                  </p>
-                  <p className="text-sm" style={{ color: zamgasTheme.colors.semantic.textSecondary }}>
-                    x {orderForm.quantity}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span style={{ color: zamgasTheme.colors.semantic.textSecondary }}>Price per unit</span>
-                  <span className="font-medium">K 100.00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: zamgasTheme.colors.semantic.textSecondary }}>Delivery Fee</span>
-                  <span className="font-medium">K 10.00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: zamgasTheme.colors.semantic.textSecondary }}>Service Charge (5%)</span>
-                  <span className="font-medium">K 5.00</span>
-                </div>
+              
+              <div className="space-y-4">
                 <div
-                  className="border-t pt-2 mt-2"
-                  style={{ borderColor: zamgasTheme.colors.neutral[40] }}
+                  className="flex items-center gap-3 p-3 rounded-xl"
+                  style={{ background: zamgasTheme.colors.premium.burgundyLight }}
                 >
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold" style={{ color: zamgasTheme.colors.semantic.textPrimary }}>
-                      Total
-                    </span>
-                    <span
-                      className="text-xl font-bold"
-                      style={{ color: zamgasTheme.colors.primary.forest }}
-                    >
-                      {formatCurrency((100 * orderForm.quantity + 10 + 5))}
-                    </span>
+                  <div className="p-2 rounded-lg" style={{ background: `${zamgasTheme.colors.premium.red}30` }}>
+                    <Zap className="h-6 w-6" style={{ color: zamgasTheme.colors.premium.gold }} />
+                  </div>
+                  <div>
+                    <p className="font-bold" style={{ color: '#FFFFFF' }}>
+                      {orderForm.cylinder_type}
+                    </p>
+                    <p className="text-sm" style={{ color: zamgasTheme.colors.premium.gray }}>
+                      Quantity: {orderForm.quantity}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span style={{ color: zamgasTheme.colors.premium.gray }}>Price per unit</span>
+                    <span className="font-medium" style={{ color: '#FFFFFF' }}>K {CYLINDER_PRICES[orderForm.cylinder_type]}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: zamgasTheme.colors.premium.gray }}>Delivery Fee</span>
+                    <span className="font-medium" style={{ color: '#FFFFFF' }}>K 25.00</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: zamgasTheme.colors.premium.gray }}>Service Charge</span>
+                    <span className="font-medium" style={{ color: '#FFFFFF' }}>K 5.00</span>
+                  </div>
+                  <div
+                    className="border-t pt-3 mt-3"
+                    style={{ borderColor: `${zamgasTheme.colors.premium.gray}30` }}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold" style={{ color: '#FFFFFF' }}>
+                        Total
+                      </span>
+                      <span
+                        className="text-2xl font-bold"
+                        style={{ color: zamgasTheme.colors.premium.gold }}
+                      >
+                        K {(CYLINDER_PRICES[orderForm.cylinder_type] * orderForm.quantity + 25 + 5).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handlePlaceOrder}
+                  disabled={isOrdering}
+                  className="w-full py-4 rounded-xl font-bold text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                  style={{
+                    background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
+                    boxShadow: `0 4px 16px ${zamgasTheme.colors.premium.red}50`,
+                    fontFamily: zamgasTheme.typography.fontFamily.display,
+                  }}
+                >
+                  {isOrdering ? 'Placing Order...' : '🔥 Place Order'}
+                </button>
+
+                <button
+                  onClick={() => router.push('/customer/orders')}
+                  className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                  style={{
+                    background: zamgasTheme.colors.premium.burgundyLight,
+                    color: zamgasTheme.colors.premium.gray,
+                    border: `1px solid ${zamgasTheme.colors.premium.gray}30`,
+                  }}
+                >
+                  <Package className="h-4 w-4" />
+                  View My Orders
+                </button>
+
+                {/* Clean Energy Badge */}
+                <div
+                  className="p-3 rounded-xl text-center text-xs"
+                  style={{
+                    background: `${zamgasTheme.colors.premium.gold}15`,
+                    border: `1px solid ${zamgasTheme.colors.premium.gold}30`,
+                  }}
+                >
+                  <div className="flex items-center justify-center gap-1.5 font-semibold" style={{ color: zamgasTheme.colors.premium.gold }}>
+                    <Shield className="h-3.5 w-3.5" />
+                    <span>100% Clean Cooking Energy</span>
                   </div>
                 </div>
               </div>
-
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full font-bold"
-                onClick={handlePlaceOrder}
-                isLoading={isOrdering}
-                disabled={isOrdering}
-                style={{
-                  background: zamgasTheme.gradients.primary,
-                  boxShadow: zamgasTheme.shadows.hover,
-                  fontFamily: zamgasTheme.typography.fontFamily.display,
-                }}
-              >
-                {isOrdering ? 'Placing Order...' : 'Place Clean Energy Order'}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="md"
-                className="w-full"
-                onClick={() => router.push('/customer/orders')}
-                style={{
-                  borderColor: zamgasTheme.colors.primary.forest,
-                  color: zamgasTheme.colors.primary.forest,
-                }}
-              >
-                <Package className="h-4 w-4 mr-2" />
-                View My Orders
-              </Button>
-
-              {/* Clean Energy Badge */}
-              <div
-                className="p-3 rounded-lg text-center text-xs"
-                style={{
-                  background: zamgasTheme.colors.primary.mintLight,
-                  color: zamgasTheme.colors.primary.forestDark,
-                }}
-              >
-                <div className="flex items-center justify-center gap-1.5 font-semibold">
-                  <Shield className="h-3.5 w-3.5" />
-                  <span>100% Clean Cooking Energy</span>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
 
