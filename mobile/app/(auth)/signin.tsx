@@ -10,12 +10,16 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native'
 import { router } from 'expo-router'
 import { Zap, Mail, Lock, Eye, EyeOff } from 'lucide-react-native'
 import { zamgasTheme } from '@/lib/theme'
 import { authAPI, setAuthToken } from '@/lib/api'
 import { useAuthStore } from '@/lib/authStore'
+import { useGoogleAuth } from '@/lib/useGoogleAuth'
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.zamgas.com'
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('')
@@ -24,6 +28,7 @@ export default function SignInScreen() {
   const [isLoading, setIsLoading] = useState(false)
   
   const { setAuth } = useAuthStore()
+  const { signIn: googleSignIn, isLoading: isGoogleLoading, isConfigured: isGoogleConfigured } = useGoogleAuth()
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -45,6 +50,42 @@ export default function SignInScreen() {
       Alert.alert('Login Failed', error.message || 'Please check your credentials')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await googleSignIn()
+      
+      if (result?.type === 'success') {
+        // The useGoogleAuth hook will handle getting the user info
+        // Now we need to authenticate with our backend
+        const authentication = result.authentication
+        
+        if (authentication?.idToken) {
+          // Send the Google ID token to your backend
+          const response = await fetch(`${API_URL}/auth/google/mobile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id_token: authentication.idToken,
+              access_token: authentication.accessToken,
+            }),
+          })
+
+          const data = await response.json()
+
+          if (response.ok && data.token && data.user) {
+            await setAuth(data.user, data.token)
+            router.replace('/(tabs)')
+          } else {
+            Alert.alert('Error', data.error || 'Failed to authenticate with Google')
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('Google sign-in error:', error)
+      Alert.alert('Google Sign-In Failed', error.message || 'Please try again')
     }
   }
 
@@ -122,6 +163,34 @@ export default function SignInScreen() {
               <>
                 <Zap size={20} color="white" />
                 <Text style={styles.signInButtonText}>Sign In</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Google Sign In Button */}
+          <TouchableOpacity 
+            style={[styles.googleButton, isGoogleLoading && styles.buttonDisabled]} 
+            onPress={handleGoogleSignIn}
+            disabled={isGoogleLoading || !isGoogleConfigured}
+          >
+            {isGoogleLoading ? (
+              <ActivityIndicator color="#4285F4" />
+            ) : (
+              <>
+                {/* Google Logo SVG as View */}
+                <View style={styles.googleIconContainer}>
+                  <Text style={styles.googleIcon}>G</Text>
+                </View>
+                <Text style={styles.googleButtonText}>
+                  {isGoogleConfigured ? 'Continue with Google' : 'Google Sign-In (Not Configured)'}
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -234,6 +303,48 @@ const styles = StyleSheet.create({
     color: zamgasTheme.colors.neutral.white,
     fontSize: zamgasTheme.typography.sizes.lg,
     fontWeight: '700',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: zamgasTheme.spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: zamgasTheme.colors.premium.burgundyLight,
+  },
+  dividerText: {
+    color: zamgasTheme.colors.premium.gray,
+    paddingHorizontal: zamgasTheme.spacing.md,
+    fontSize: zamgasTheme.typography.sizes.sm,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: zamgasTheme.borderRadius.xl,
+    height: 56,
+    gap: zamgasTheme.spacing.sm,
+  },
+  googleIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#4285F4',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  googleIcon: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  googleButtonText: {
+    color: '#333333',
+    fontSize: zamgasTheme.typography.sizes.base,
+    fontWeight: '600',
   },
   signUpContainer: {
     flexDirection: 'row',

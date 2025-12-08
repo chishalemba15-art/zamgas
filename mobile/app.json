@@ -46,7 +46,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow ZAMGAS to use your location to find providers and deliver orders."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
