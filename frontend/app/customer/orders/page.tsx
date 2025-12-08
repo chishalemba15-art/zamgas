@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/Layout/DashboardLayout'
 import { orderAPI, type Order } from '@/lib/api'
-import { Package, Clock, MapPin, ChevronDown, ChevronUp, Copy, CheckCircle, Truck, XCircle } from 'lucide-react'
+import { Package, Clock, MapPin, ChevronDown, ChevronUp, Copy, CheckCircle, Truck, XCircle, Zap, Phone, Navigation } from 'lucide-react'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { zamgasTheme } from '@/lib/zamgas-theme'
 import toast from 'react-hot-toast'
@@ -53,27 +53,38 @@ export default function CustomerOrders() {
     switch (status) {
       case 'delivered':
         return {
-          background: zamgasTheme.colors.semantic.success + '15',
+          background: `${zamgasTheme.colors.semantic.success}20`,
           color: zamgasTheme.colors.semantic.success,
           icon: CheckCircle,
+          label: '✓ Delivered'
         }
       case 'in-transit':
         return {
-          background: zamgasTheme.colors.accent.teal + '15',
-          color: zamgasTheme.colors.accent.teal,
+          background: `${zamgasTheme.colors.semantic.info}20`,
+          color: zamgasTheme.colors.semantic.info,
           icon: Truck,
+          label: '🚚 En Route'
         }
       case 'rejected':
         return {
-          background: zamgasTheme.colors.semantic.danger + '15',
+          background: `${zamgasTheme.colors.semantic.danger}20`,
           color: zamgasTheme.colors.semantic.danger,
           icon: XCircle,
+          label: '✗ Rejected'
         }
-      default: // pending, accepted
+      case 'accepted':
         return {
-          background: zamgasTheme.colors.secondary.amber + '15',
+          background: `${zamgasTheme.colors.premium.gold}20`,
+          color: zamgasTheme.colors.premium.gold,
+          icon: CheckCircle,
+          label: '✓ Accepted'
+        }
+      default: // pending
+        return {
+          background: `${zamgasTheme.colors.secondary.amber}20`,
           color: zamgasTheme.colors.secondary.amber,
           icon: Clock,
+          label: '⏳ Pending'
         }
     }
   }
@@ -96,7 +107,27 @@ export default function CustomerOrders() {
   return (
     <DashboardLayout title="My Orders">
       <div className="space-y-4">
-        {/* Filter Chips */}
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-xl font-bold" style={{ 
+            color: zamgasTheme.colors.premium.gold,
+            fontFamily: zamgasTheme.typography.fontFamily.display,
+          }}>
+            Order History
+          </h1>
+          <button
+            onClick={() => router.push('/customer/dashboard')}
+            className="px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-95"
+            style={{
+              background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
+              color: 'white',
+            }}
+          >
+            + New Order
+          </button>
+        </div>
+
+        {/* Filter Chips - Dark Theme */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {([
             { key: 'all', label: 'All' },
@@ -107,24 +138,28 @@ export default function CustomerOrders() {
             <button
               key={filter.key}
               onClick={() => setActiveFilter(filter.key)}
-              className="px-4 py-2.5 rounded-full font-medium text-sm whitespace-nowrap transition-all active:scale-95 flex items-center gap-2"
+              className="px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all active:scale-95 flex items-center gap-2"
               style={{
                 background: activeFilter === filter.key
-                  ? zamgasTheme.gradients.primary
-                  : zamgasTheme.colors.neutral[100],
+                  ? `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`
+                  : zamgasTheme.colors.premium.burgundyLight,
                 color: activeFilter === filter.key
                   ? 'white'
-                  : zamgasTheme.colors.semantic.textSecondary,
+                  : zamgasTheme.colors.premium.gray,
+                border: activeFilter === filter.key
+                  ? `1px solid ${zamgasTheme.colors.premium.gold}`
+                  : `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
                 fontFamily: zamgasTheme.typography.fontFamily.body,
               }}
             >
               <span>{filter.label}</span>
               <span
-                className="px-2 py-0.5 rounded-full text-xs font-bold"
+                className="px-1.5 py-0.5 rounded-lg text-xs font-bold"
                 style={{
                   background: activeFilter === filter.key
                     ? 'rgba(255, 255, 255, 0.25)'
-                    : zamgasTheme.colors.neutral[200],
+                    : `${zamgasTheme.colors.premium.gray}30`,
+                  color: activeFilter === filter.key ? 'white' : zamgasTheme.colors.premium.gray,
                 }}
               >
                 {getFilterCount(filter.key)}
@@ -138,14 +173,14 @@ export default function CustomerOrders() {
           <div
             className="p-8 rounded-2xl text-center"
             style={{
-              background: zamgasTheme.colors.semantic.cardBg,
-              boxShadow: zamgasTheme.shadows.small,
+              background: zamgasTheme.colors.premium.burgundy,
+              border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
             }}
           >
             <div className="animate-spin h-8 w-8 border-4 border-t-transparent rounded-full mx-auto"
-              style={{ borderColor: zamgasTheme.colors.primary.mint, borderTopColor: 'transparent' }}
+              style={{ borderColor: zamgasTheme.colors.premium.gold, borderTopColor: 'transparent' }}
             />
-            <p className="mt-4" style={{ color: zamgasTheme.colors.semantic.textSecondary }}>
+            <p className="mt-4" style={{ color: zamgasTheme.colors.premium.gray }}>
               Loading orders...
             </p>
           </div>
@@ -153,33 +188,41 @@ export default function CustomerOrders() {
           <div
             className="p-8 sm:p-12 rounded-2xl text-center"
             style={{
-              background: zamgasTheme.gradients.eco,
-              boxShadow: zamgasTheme.shadows.medium,
+              background: zamgasTheme.colors.premium.burgundy,
+              border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
             }}
           >
-            <Package className="h-16 w-16 mx-auto mb-4 text-white opacity-80" />
+            <div 
+              className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+              style={{ background: `${zamgasTheme.colors.premium.red}30` }}
+            >
+              <Package className="h-8 w-8" style={{ color: zamgasTheme.colors.premium.gold }} />
+            </div>
             <h3
-              className="text-xl font-bold mb-2 text-white"
-              style={{ fontFamily: zamgasTheme.typography.fontFamily.display }}
+              className="text-xl font-bold mb-2"
+              style={{ 
+                color: zamgasTheme.colors.premium.gold,
+                fontFamily: zamgasTheme.typography.fontFamily.display 
+              }}
             >
               {activeFilter === 'all' ? 'No orders yet' : `No ${activeFilter} orders`}
             </h3>
-            <p className="text-white/90 mb-6">
+            <p className="mb-6" style={{ color: zamgasTheme.colors.premium.gray }}>
               {activeFilter === 'all'
-                ? 'Place your first clean energy order to see it here'
+                ? 'Place your first order to see it here'
                 : `You don't have any ${activeFilter} orders right now`}
             </p>
             {activeFilter === 'all' && (
               <button
                 onClick={() => router.push('/customer/dashboard')}
-                className="px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105 active:scale-95"
+                className="px-6 py-3 rounded-xl font-bold transition-all active:scale-95"
                 style={{
-                  background: 'white',
-                  color: zamgasTheme.colors.primary.forest,
-                  boxShadow: zamgasTheme.shadows.medium,
+                  background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
+                  color: 'white',
+                  boxShadow: `0 4px 16px ${zamgasTheme.colors.premium.red}50`,
                 }}
               >
-                Place Your First Order
+                🔥 Place Your First Order
               </button>
             )}
           </div>
@@ -195,14 +238,14 @@ export default function CustomerOrders() {
                   key={order.id}
                   className="rounded-2xl overflow-hidden transition-all"
                   style={{
-                    background: zamgasTheme.colors.semantic.cardBg,
-                    boxShadow: isExpanded ? zamgasTheme.shadows.medium : zamgasTheme.shadows.small,
-                    border: `1px solid ${zamgasTheme.colors.neutral[200]}`,
+                    background: zamgasTheme.colors.premium.burgundy,
+                    boxShadow: isExpanded ? '0 8px 24px rgba(0, 0, 0, 0.4)' : '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
                   }}
                 >
                   {/* Compact View */}
                   <div
-                    className="p-4 cursor-pointer active:bg-opacity-50 transition-all"
+                    className="p-4 cursor-pointer transition-all"
                     onClick={() => toggleOrder(order.id)}
                   >
                     <div className="flex items-start justify-between gap-3 mb-3">
@@ -211,7 +254,7 @@ export default function CustomerOrders() {
                           <p
                             className="font-bold text-sm"
                             style={{
-                              color: zamgasTheme.colors.semantic.textPrimary,
+                              color: '#FFFFFF',
                               fontFamily: zamgasTheme.typography.fontFamily.display,
                             }}
                           >
@@ -222,12 +265,13 @@ export default function CustomerOrders() {
                               e.stopPropagation()
                               copyOrderId(order.id)
                             }}
-                            className="p-1 rounded hover:bg-gray-100 transition-colors"
+                            className="p-1 rounded transition-colors"
+                            style={{ background: zamgasTheme.colors.premium.burgundyLight }}
                           >
-                            <Copy className="h-3 w-3" style={{ color: zamgasTheme.colors.semantic.textSecondary }} />
+                            <Copy className="h-3 w-3" style={{ color: zamgasTheme.colors.premium.gray }} />
                           </button>
                         </div>
-                        <div className="flex items-center gap-2 text-xs" style={{ color: zamgasTheme.colors.semantic.textSecondary }}>
+                        <div className="flex items-center gap-2 text-xs" style={{ color: zamgasTheme.colors.premium.gray }}>
                           <Clock className="h-3.5 w-3.5" />
                           <span>{formatDateTime(order.created_at)}</span>
                         </div>
@@ -235,38 +279,37 @@ export default function CustomerOrders() {
 
                       <div className="flex flex-col items-end gap-2">
                         <div
-                          className="px-3 py-1.5 rounded-full flex items-center gap-1.5"
+                          className="px-3 py-1.5 rounded-lg flex items-center gap-1.5"
                           style={{
                             background: statusStyle.background,
                           }}
                         >
-                          <StatusIcon className="h-3.5 w-3.5" style={{ color: statusStyle.color }} />
                           <span
-                            className="text-xs font-bold uppercase"
+                            className="text-xs font-bold"
                             style={{ color: statusStyle.color }}
                           >
-                            {order.status.replace('-', ' ')}
+                            {statusStyle.label}
                           </span>
                         </div>
                         {isExpanded ? (
-                          <ChevronUp className="h-5 w-5" style={{ color: zamgasTheme.colors.semantic.textSecondary }} />
+                          <ChevronUp className="h-5 w-5" style={{ color: zamgasTheme.colors.premium.gold }} />
                         ) : (
-                          <ChevronDown className="h-5 w-5" style={{ color: zamgasTheme.colors.semantic.textSecondary }} />
+                          <ChevronDown className="h-5 w-5" style={{ color: zamgasTheme.colors.premium.gray }} />
                         )}
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4" style={{ color: zamgasTheme.colors.primary.forest }} />
-                        <span className="font-medium text-sm" style={{ color: zamgasTheme.colors.semantic.textPrimary }}>
+                        <Zap className="h-4 w-4" style={{ color: zamgasTheme.colors.premium.gold }} />
+                        <span className="font-medium text-sm" style={{ color: '#FFFFFF' }}>
                           {order.cylinder_type} × {order.quantity}
                         </span>
                       </div>
                       <p
                         className="text-xl font-bold"
                         style={{
-                          color: zamgasTheme.colors.primary.forest,
+                          color: zamgasTheme.colors.premium.gold,
                           fontFamily: zamgasTheme.typography.fontFamily.display,
                         }}
                       >
@@ -279,57 +322,111 @@ export default function CustomerOrders() {
                   {isExpanded && (
                     <div
                       className="px-4 pb-4 pt-2 border-t space-y-4"
-                      style={{ borderColor: zamgasTheme.colors.neutral[200] }}
+                      style={{ borderColor: `${zamgasTheme.colors.premium.gray}20` }}
                     >
-                      {/* Payment Details */}
+                      {/* Payment & Status Grid */}
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs mb-1" style={{ color: zamgasTheme.colors.semantic.textSecondary }}>
+                        <div
+                          className="p-3 rounded-xl"
+                          style={{ background: zamgasTheme.colors.premium.burgundyLight }}
+                        >
+                          <p className="text-xs mb-1" style={{ color: zamgasTheme.colors.premium.gray }}>
                             Payment Method
                           </p>
-                          <p className="font-medium text-sm capitalize" style={{ color: zamgasTheme.colors.semantic.textPrimary }}>
+                          <p className="font-medium text-sm capitalize" style={{ color: '#FFFFFF' }}>
                             {order.payment_method.replace('_', ' ')}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-xs mb-1" style={{ color: zamgasTheme.colors.semantic.textSecondary }}>
+                        <div
+                          className="p-3 rounded-xl"
+                          style={{ background: zamgasTheme.colors.premium.burgundyLight }}
+                        >
+                          <p className="text-xs mb-1" style={{ color: zamgasTheme.colors.premium.gray }}>
                             Payment Status
                           </p>
-                          <p className="font-medium text-sm capitalize" style={{ color: zamgasTheme.colors.semantic.textPrimary }}>
+                          <p className="font-medium text-sm capitalize" style={{ 
+                            color: order.payment_status === 'paid' 
+                              ? zamgasTheme.colors.semantic.success 
+                              : zamgasTheme.colors.premium.gold 
+                          }}>
                             {order.payment_status}
                           </p>
                         </div>
                       </div>
 
                       {/* Delivery Address */}
-                      <div>
-                        <p className="text-xs mb-1" style={{ color: zamgasTheme.colors.semantic.textSecondary }}>
+                      <div
+                        className="p-3 rounded-xl"
+                        style={{ background: zamgasTheme.colors.premium.burgundyLight }}
+                      >
+                        <p className="text-xs mb-2" style={{ color: zamgasTheme.colors.premium.gray }}>
                           Delivery Address
                         </p>
                         <div className="flex items-start gap-2">
-                          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: zamgasTheme.colors.primary.forest }} />
-                          <p className="font-medium text-sm" style={{ color: zamgasTheme.colors.semantic.textPrimary }}>
+                          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: zamgasTheme.colors.premium.gold }} />
+                          <p className="font-medium text-sm" style={{ color: '#FFFFFF' }}>
                             {order.delivery_address}
                           </p>
                         </div>
                       </div>
+
+                      {/* Courier Info - if assigned */}
+                      {order.courier_name && (
+                        <div
+                          className="p-3 rounded-xl flex items-center justify-between"
+                          style={{ 
+                            background: `${zamgasTheme.colors.semantic.info}15`,
+                            border: `1px solid ${zamgasTheme.colors.semantic.info}30`,
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                              style={{ background: zamgasTheme.colors.semantic.info, color: 'white' }}
+                            >
+                              {order.courier_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium" style={{ color: '#FFFFFF' }}>
+                                {order.courier_name}
+                              </p>
+                              <p className="text-xs" style={{ color: zamgasTheme.colors.premium.gray }}>
+                                Your Courier
+                              </p>
+                            </div>
+                          </div>
+                          {order.courier_phone && (
+                            <a
+                              href={`tel:${order.courier_phone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-2 rounded-xl transition-all active:scale-95"
+                              style={{ 
+                                background: zamgasTheme.colors.semantic.info,
+                                color: 'white',
+                              }}
+                            >
+                              <Phone className="h-4 w-4" />
+                            </a>
+                          )}
+                        </div>
+                      )}
 
                       {/* Tracking Info */}
                       {order.current_address && order.status === 'in-transit' && (
                         <div
                           className="p-3 rounded-xl"
                           style={{
-                            background: zamgasTheme.colors.accent.teal + '10',
-                            border: `1px solid ${zamgasTheme.colors.accent.teal}30`,
+                            background: `${zamgasTheme.colors.semantic.info}15`,
+                            border: `1px solid ${zamgasTheme.colors.semantic.info}30`,
                           }}
                         >
                           <div className="flex items-start gap-2">
-                            <Truck className="h-5 w-5 flex-shrink-0" style={{ color: zamgasTheme.colors.accent.teal }} />
+                            <Navigation className="h-5 w-5 flex-shrink-0 animate-pulse" style={{ color: zamgasTheme.colors.semantic.info }} />
                             <div>
-                              <p className="text-sm font-semibold mb-1" style={{ color: zamgasTheme.colors.accent.tealDark }}>
-                                Currently at:
+                              <p className="text-sm font-semibold mb-1" style={{ color: zamgasTheme.colors.semantic.info }}>
+                                Live Location
                               </p>
-                              <p className="text-sm" style={{ color: zamgasTheme.colors.semantic.textPrimary }}>
+                              <p className="text-sm" style={{ color: '#FFFFFF' }}>
                                 {order.current_address}
                               </p>
                             </div>
