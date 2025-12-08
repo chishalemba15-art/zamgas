@@ -234,6 +234,10 @@ export default function Home() {
           from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
         .animate-float { animation: float 3s ease-in-out infinite; }
         .animate-shimmer {
           background: linear-gradient(90deg, transparent 0%, rgba(251,198,9,0.3) 50%, transparent 100%);
@@ -241,6 +245,8 @@ export default function Home() {
           animation: shimmer 3s linear infinite;
         }
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+        .animate-scroll { animation: scroll 20s linear infinite; }
+        .animate-scroll:hover { animation-play-state: paused; }
         .hover-lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
         .hover-lift:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
       `}</style>
@@ -409,6 +415,118 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trusted Brands Section */}
+      <section id="brands" className="py-12 sm:py-16 overflow-hidden" style={{ background: zamgasTheme.colors.premium.burgundyDark }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <p className="text-sm font-medium uppercase tracking-wider mb-2" style={{ color: zamgasTheme.colors.premium.gold }}>
+              🏆 Delivering Your Favorite Brands
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold" style={{ color: '#FFFFFF', fontFamily: zamgasTheme.typography.fontFamily.display }}>
+              Trusted <span style={{ color: zamgasTheme.colors.premium.gold }}>LPG Brands</span> Available
+            </h2>
+            <p className="text-sm mt-2" style={{ color: zamgasTheme.colors.premium.gray }}>
+              We deliver from Zambia's most trusted gas suppliers
+            </p>
+          </div>
+
+          {/* Scrolling Logo Carousel */}
+          <div className="relative">
+            {/* Gradient fade on edges */}
+            <div className="absolute left-0 top-0 bottom-0 w-16 z-10" style={{ background: `linear-gradient(to right, ${zamgasTheme.colors.premium.burgundyDark}, transparent)` }} />
+            <div className="absolute right-0 top-0 bottom-0 w-16 z-10" style={{ background: `linear-gradient(to left, ${zamgasTheme.colors.premium.burgundyDark}, transparent)` }} />
+            
+            {/* Scrolling container */}
+            <div className="flex gap-8 animate-scroll">
+              {/* First set of logos */}
+              {[
+                { name: 'Rubis', logo: '/rubis.webp' },
+                { name: 'Oryx', logo: '/oryx.png' },
+                { name: 'TotalEnergy', logo: '/totalenergy.png' },
+                { name: 'Puma Energy', logo: '/pumaenergy.png' },
+                { name: 'Merugas', logo: '/merugas.png' },
+                { name: 'Cadac', logo: '/cadac.png' },
+              ].map((brand, i) => (
+                <div
+                  key={`brand-1-${i}`}
+                  className="flex-shrink-0 flex flex-col items-center gap-3 p-4 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer group"
+                  style={{ 
+                    background: zamgasTheme.colors.premium.burgundy,
+                    border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
+                    minWidth: '140px',
+                  }}
+                >
+                  <div 
+                    className="w-20 h-20 rounded-lg flex items-center justify-center p-2 transition-transform duration-300 group-hover:scale-110"
+                    style={{ background: '#FFFFFF' }}
+                  >
+                    <Image
+                      src={brand.logo}
+                      alt={brand.name}
+                      width={64}
+                      height={64}
+                      className="object-contain max-h-16"
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-center" style={{ color: zamgasTheme.colors.premium.gray }}>
+                    {brand.name}
+                  </span>
+                </div>
+              ))}
+              {/* Duplicate set for infinite scroll effect */}
+              {[
+                { name: 'Rubis', logo: '/rubis.webp' },
+                { name: 'Oryx', logo: '/oryx.png' },
+                { name: 'TotalEnergy', logo: '/totalenergy.png' },
+                { name: 'Puma Energy', logo: '/pumaenergy.png' },
+                { name: 'Merugas', logo: '/merugas.png' },
+                { name: 'Cadac', logo: '/cadac.png' },
+              ].map((brand, i) => (
+                <div
+                  key={`brand-2-${i}`}
+                  className="flex-shrink-0 flex flex-col items-center gap-3 p-4 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer group"
+                  style={{ 
+                    background: zamgasTheme.colors.premium.burgundy,
+                    border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
+                    minWidth: '140px',
+                  }}
+                >
+                  <div 
+                    className="w-20 h-20 rounded-lg flex items-center justify-center p-2 transition-transform duration-300 group-hover:scale-110"
+                    style={{ background: '#FFFFFF' }}
+                  >
+                    <Image
+                      src={brand.logo}
+                      alt={brand.name}
+                      width={64}
+                      height={64}
+                      className="object-contain max-h-16"
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-center" style={{ color: zamgasTheme.colors.premium.gray }}>
+                    {brand.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Brand Trust Indicators */}
+          <div className="flex flex-wrap justify-center gap-6 mt-8">
+            {[
+              { icon: Shield, text: 'ZEMA Certified' },
+              { icon: CheckCircle, text: 'Quality Guaranteed' },
+              { icon: Truck, text: 'Safe Delivery' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <item.icon className="h-4 w-4" style={{ color: zamgasTheme.colors.premium.gold }} />
+                <span className="text-sm" style={{ color: zamgasTheme.colors.premium.gray }}>{item.text}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
