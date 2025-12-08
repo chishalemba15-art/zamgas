@@ -3,11 +3,11 @@
 import { useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Flame, Mail, Lock } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import Image from 'next/image'
+import { Mail, Lock, Zap, Truck } from 'lucide-react'
 import { authAPI, adminAuthAPI } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import { zamgasTheme } from '@/lib/zamgas-theme'
 import toast from 'react-hot-toast'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.zamgas.com'
@@ -25,7 +25,6 @@ function SignInContent() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
-    // Clear error when user starts typing
     if (errors[e.target.name]) {
       setErrors({ ...errors, [e.target.name]: '' })
     }
@@ -56,24 +55,20 @@ function SignInContent() {
     setIsLoading(true)
 
     try {
-      // Detect if this is an admin login by checking email pattern
       const isAdminLogin = formData.email.toLowerCase().includes('admin')
 
       let response
 
       if (isAdminLogin) {
-        // Use admin login endpoint for admin users
         response = await adminAuthAPI.signIn(formData.email, formData.password)
         setAuth(response.admin, response.token)
         toast.success('Welcome back, Admin!')
         router.push('/admin')
       } else {
-        // Use regular auth endpoint for customers, providers, couriers
         response = await authAPI.signIn(formData.email, formData.password)
         setAuth(response.user, response.token)
         toast.success('Welcome back!')
 
-        // Redirect based on user type
         if (response.user.user_type === 'customer') {
           router.push('/customer/dashboard')
         } else if (response.user.user_type === 'provider') {
@@ -91,50 +86,80 @@ function SignInContent() {
 
   const handleGoogleSignIn = () => {
     setIsGoogleLoading(true)
-    // Redirect to backend Google OAuth endpoint
     window.location.href = `${API_URL}/auth/google`
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-accent-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
+    <div 
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.burgundyDark} 0%, ${zamgasTheme.colors.premium.burgundy} 50%, ${zamgasTheme.colors.premium.burgundyDark} 100%)`,
+      }}
+    >
+      {/* Background Pattern */}
+      <div className="fixed inset-0 opacity-5" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 20 L35 30 L30 40 L25 30 Z' fill='%23FBC609'/%3E%3C/svg%3E")`,
+        backgroundSize: '40px 40px'
+      }} />
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Logo & Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center bg-brand-600 rounded-full p-3 mb-4">
-            <Flame className="h-8 w-8 text-white" />
+          <div 
+            className="inline-flex items-center justify-center rounded-2xl p-1 mb-4 overflow-hidden"
+            style={{ 
+              boxShadow: `0 8px 32px ${zamgasTheme.colors.premium.gold}30`,
+            }}
+          >
+            <Image 
+              src="/app-icon.png" 
+              alt="ZAMGAS" 
+              width={80} 
+              height={80}
+              className="object-cover rounded-xl"
+            />
           </div>
-          <h1 className="text-3xl font-bold text-neutral-900">Welcome Back</h1>
-          <p className="text-neutral-600 mt-2">Sign in to your ZamGas account</p>
+          <h1 
+            className="text-3xl font-bold mb-2"
+            style={{ 
+              color: zamgasTheme.colors.premium.gold,
+              fontFamily: zamgasTheme.typography.fontFamily.display,
+            }}
+          >
+            Welcome Back
+          </h1>
+          <p style={{ color: zamgasTheme.colors.premium.gray }}>
+            Sign in to your ZAMGAS account
+          </p>
         </div>
 
-        {/* Sign In Form */}
-        <div className="bg-white rounded-2xl shadow-medium p-8">
+        {/* Sign In Card */}
+        <div 
+          className="rounded-3xl p-8 backdrop-blur-lg"
+          style={{
+            background: `${zamgasTheme.colors.premium.burgundy}90`,
+            border: `1px solid ${zamgasTheme.colors.premium.burgundyLight}`,
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          }}
+        >
           {/* Google Sign-in Button */}
           <button
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading || isLoading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+            style={{
+              background: '#FFFFFF',
+              color: '#333333',
+            }}
           >
             {isGoogleLoading ? (
               <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
             ) : (
               <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
             )}
             <span>{isGoogleLoading ? 'Signing in...' : 'Continue with Google'}</span>
@@ -143,72 +168,155 @@ function SignInContent() {
           {/* Divider */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
+              <div className="w-full border-t" style={{ borderColor: `${zamgasTheme.colors.premium.gray}30` }} />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">or sign in with email</span>
+              <span 
+                className="px-4"
+                style={{ 
+                  background: zamgasTheme.colors.premium.burgundy,
+                  color: zamgasTheme.colors.premium.gray,
+                }}
+              >
+                or sign in with email
+              </span>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <Input
-              label="Email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              error={errors.email}
-              placeholder="your@email.com"
-              required
-              disabled={isLoading}
-            />
+            {/* Email Input */}
+            <div>
+              <label 
+                className="block text-sm font-medium mb-2"
+                style={{ color: zamgasTheme.colors.premium.gray }}
+              >
+                Email
+              </label>
+              <div className="relative">
+                <div 
+                  className="absolute left-4 top-1/2 -translate-y-1/2"
+                  style={{ color: zamgasTheme.colors.premium.gold }}
+                >
+                  <Mail className="h-5 w-5" />
+                </div>
+                <input
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="your@email.com"
+                  disabled={isLoading}
+                  className="w-full pl-12 pr-4 py-3.5 rounded-xl transition-all outline-none"
+                  style={{
+                    background: zamgasTheme.colors.premium.burgundyLight,
+                    border: errors.email 
+                      ? `2px solid ${zamgasTheme.colors.semantic.danger}` 
+                      : `1px solid ${zamgasTheme.colors.premium.gray}30`,
+                    color: '#FFFFFF',
+                  }}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-xs mt-1" style={{ color: zamgasTheme.colors.semantic.danger }}>
+                  {errors.email}
+                </p>
+              )}
+            </div>
 
-            <Input
-              label="Password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              error={errors.password}
-              placeholder="••••••••"
-              required
-              disabled={isLoading}
-            />
+            {/* Password Input */}
+            <div>
+              <label 
+                className="block text-sm font-medium mb-2"
+                style={{ color: zamgasTheme.colors.premium.gray }}
+              >
+                Password
+              </label>
+              <div className="relative">
+                <div 
+                  className="absolute left-4 top-1/2 -translate-y-1/2"
+                  style={{ color: zamgasTheme.colors.premium.gold }}
+                >
+                  <Lock className="h-5 w-5" />
+                </div>
+                <input
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  disabled={isLoading}
+                  className="w-full pl-12 pr-4 py-3.5 rounded-xl transition-all outline-none"
+                  style={{
+                    background: zamgasTheme.colors.premium.burgundyLight,
+                    border: errors.password 
+                      ? `2px solid ${zamgasTheme.colors.semantic.danger}` 
+                      : `1px solid ${zamgasTheme.colors.premium.gray}30`,
+                    color: '#FFFFFF',
+                  }}
+                />
+              </div>
+              {errors.password && (
+                <p className="text-xs mt-1" style={{ color: zamgasTheme.colors.semantic.danger }}>
+                  {errors.password}
+                </p>
+              )}
+            </div>
 
-            <Button
+            {/* Submit Button */}
+            <button
               type="submit"
-              variant="primary"
-              size="lg"
-              className="w-full"
-              isLoading={isLoading}
               disabled={isLoading || isGoogleLoading}
+              className="w-full py-4 rounded-xl font-bold text-white transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+              style={{
+                background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,
+                boxShadow: `0 4px 16px ${zamgasTheme.colors.premium.red}50`,
+              }}
             >
-              Sign In
-            </Button>
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Zap className="h-5 w-5" />
+                  <span>Sign In</span>
+                </>
+              )}
+            </button>
           </form>
 
+          {/* Footer Links */}
           <div className="mt-6 text-center">
-            <p className="text-neutral-600">
+            <p style={{ color: zamgasTheme.colors.premium.gray }}>
               Don't have an account?{' '}
-              <Link href="/auth/signup" className="text-brand-600 font-medium hover:text-brand-700">
+              <Link 
+                href="/auth/signup" 
+                className="font-semibold transition-colors"
+                style={{ color: zamgasTheme.colors.premium.gold }}
+              >
                 Sign up
               </Link>
             </p>
             
-            <div className="mt-6 pt-6 border-t border-gray-100">
+            {/* Courier Access */}
+            <div className="mt-6 pt-6" style={{ borderTop: `1px solid ${zamgasTheme.colors.premium.gray}20` }}>
               <Link 
                 href="/courier/login" 
-                className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-brand-600 transition-colors"
-                title="Access Courier Portal"
+                className="inline-flex items-center gap-2 text-sm transition-all active:scale-95 px-4 py-2 rounded-xl"
+                style={{ 
+                  color: zamgasTheme.colors.premium.gray,
+                  background: zamgasTheme.colors.premium.burgundyLight,
+                }}
               >
-                <div className="bg-neutral-100 p-1 rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
-                </div>
-                <span>Courier Access</span>
+                <Truck className="h-4 w-4" />
+                <span>Courier Portal</span>
               </Link>
             </div>
           </div>
         </div>
+
+        {/* Bottom Tagline */}
+        <p className="text-center mt-6 text-sm" style={{ color: zamgasTheme.colors.premium.gray }}>
+          🔥 Fast • Safe • Reliable LPG Delivery
+        </p>
       </div>
     </div>
   )
@@ -217,8 +325,16 @@ function SignInContent() {
 export default function SignIn() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-accent-50 flex items-center justify-center p-4">
-        <div className="animate-spin h-8 w-8 border-4 border-brand-600 border-t-transparent rounded-full"></div>
+      <div 
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{
+          background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.burgundyDark} 0%, ${zamgasTheme.colors.premium.burgundy} 100%)`,
+        }}
+      >
+        <div 
+          className="animate-spin h-8 w-8 border-4 border-t-transparent rounded-full"
+          style={{ borderColor: zamgasTheme.colors.premium.gold, borderTopColor: 'transparent' }}
+        />
       </div>
     }>
       <SignInContent />
