@@ -777,9 +777,9 @@ export default function Home() {
               <span className="text-xl font-bold" style={{ color: zamgasTheme.colors.premium.gold }}>ZAMGAS</span>
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-sm" style={{ color: zamgasTheme.colors.premium.gray }}>
-              <a href="tel:+260773496230" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <a href="tel:+260773962307" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <Phone className="h-4 w-4" />
-                <span>+260 773 496 230</span>
+                <span>+260 773 962 307</span>
               </a>
               <a href="tel:+260750216961" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <Phone className="h-4 w-4" />

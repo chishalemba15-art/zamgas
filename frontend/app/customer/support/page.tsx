@@ -48,14 +48,14 @@ export default function CustomerSupport() {
     {
       icon: Phone,
       title: 'Call Us',
-      description: '+260 773 496 230',
-      action: () => window.location.href = 'tel:+260773496230',
+      description: '+260 773 962 307',
+      action: () => window.location.href = 'tel:+260773962307',
     },
     {
       icon: MessageCircle,
       title: 'WhatsApp',
       description: 'Chat with us',
-      action: () => window.open('https://wa.me/260773496230', '_blank'),
+      action: () => window.open('https://wa.me/260773962307', '_blank'),
     },
     {
       icon: Mail,
@@ -239,7 +239,7 @@ export default function CustomerSupport() {
             Our support team is ready to assist you with any questions or concerns.
           </p>
           <button
-            onClick={() => window.open('https://wa.me/260773496230', '_blank')}
+            onClick={() => window.open('https://wa.me/260773962307', '_blank')}
             className="px-6 py-3 rounded-xl font-bold transition-all hover:scale-105 active:scale-95"
             style={{
               background: `linear-gradient(135deg, ${zamgasTheme.colors.premium.red} 0%, ${zamgasTheme.colors.premium.redDark} 100%)`,

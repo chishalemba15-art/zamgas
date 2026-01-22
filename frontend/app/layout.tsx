@@ -211,7 +211,7 @@ const jsonLd = {
         latitude: -15.4167,
         longitude: 28.2833,
       },
-      telephone: '+260773496230',
+      telephone: '+260773962307',
       priceRange: 'K100-K500',
       openingHoursSpecification: [
         {
