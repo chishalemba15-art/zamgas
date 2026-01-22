@@ -165,12 +165,26 @@ const jsonLd = {
         addressRegion: 'Lusaka Province',
         addressCountry: 'ZM',
       },
-      contactPoint: {
-        '@type': 'ContactPoint',
-        telephone: '+260-97-900-0000',
-        contactType: 'customer service',
-        availableLanguage: ['English'],
-      },
+      contactPoint: [
+        {
+          '@type': 'ContactPoint',
+          telephone: '+260-773-496-2307',
+          contactType: 'customer service',
+          availableLanguage: ['English'],
+        },
+        {
+          '@type': 'ContactPoint',
+          telephone: '+260-750-216-961',
+          contactType: 'customer service',
+          availableLanguage: ['English'],
+        },
+        {
+          '@type': 'ContactPoint',
+          telephone: '+260-974-582-961',
+          contactType: 'sales',
+          availableLanguage: ['English'],
+        },
+      ],
       sameAs: [
         'https://www.facebook.com/zamgas',
         'https://twitter.com/zamgas_zm',
@@ -197,7 +211,7 @@ const jsonLd = {
         latitude: -15.4167,
         longitude: 28.2833,
       },
-      telephone: '+260979000000',
+      telephone: '+260773496230',
       priceRange: 'K100-K500',
       openingHoursSpecification: [
         {

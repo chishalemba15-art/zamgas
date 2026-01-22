@@ -776,13 +776,19 @@ export default function Home() {
               />
               <span className="text-xl font-bold" style={{ color: zamgasTheme.colors.premium.gold }}>ZAMGAS</span>
             </div>
-            <div className="flex items-center gap-6 text-sm" style={{ color: zamgasTheme.colors.premium.gray }}>
-              <a href="tel:+260979000000" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-sm" style={{ color: zamgasTheme.colors.premium.gray }}>
+              <a href="tel:+260773496230" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <Phone className="h-4 w-4" />
-                <span>+260 97 900 0000</span>
+                <span>+260 773 496 230</span>
               </a>
-              <span>•</span>
-              <span>Lusaka, Zambia</span>
+              <a href="tel:+260750216961" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <Phone className="h-4 w-4" />
+                <span>+260 750 216 961</span>
+              </a>
+              <a href="tel:+260974582961" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <Phone className="h-4 w-4" />
+                <span>+260 974 582 961</span>
+              </a>
             </div>
             <p className="text-sm" style={{ color: zamgasTheme.colors.premium.gray }}>
               © 2026 ZAMGAS. All rights reserved.
