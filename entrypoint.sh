@@ -2,12 +2,23 @@
 set -e
 
 echo "Starting LPG Delivery Server..."
+echo "Checking environment variables..."
+
+# Debug: Show if key environment variables exist (without showing values for security)
+echo "PORT is set: $([ -n \"$PORT\" ] && echo 'YES' || echo 'NO')"
+echo "DATABASE_URL is set: $([ -n \"$DATABASE_URL\" ] && echo 'YES' || echo 'NO')"
+echo "JWT_SECRET is set: $([ -n \"$JWT_SECRET\" ] && echo 'YES' || echo 'NO')"
 
 # Check if DATABASE_URL is set
 if [ -z "$DATABASE_URL" ]; then
     echo "ERROR: DATABASE_URL environment variable is not set"
+    echo "Please set DATABASE_URL in your Railway Variables tab"
+    echo "Waiting 10 seconds before exit to allow log viewing..."
+    sleep 10
     exit 1
 fi
+
+echo "All required environment variables are set!"
 
 # Extract database connection details from DATABASE_URL
 # Format: postgresql://user:password@host/database?sslmode=require
