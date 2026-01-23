@@ -33,6 +33,7 @@ import (
 	"github.com/yakumwamba/lpg-delivery-system/pkg/database"
 	"github.com/yakumwamba/lpg-delivery-system/pkg/middleware"
 	"github.com/yakumwamba/lpg-delivery-system/pkg/realtime"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
 )
 
@@ -577,6 +578,13 @@ func main() {
 		adminRoutes.PUT("/disputes/:id/resolve", handleResolveDispute())
 		adminRoutes.GET("/export/:type", handleExportData())
 		adminRoutes.GET("/logs/audit", handleGetAuditLogs())
+
+		// Admin user management endpoints (super_admin only)
+		adminRoutes.GET("/admin-users", handleGetAdminUsers(adminAuthService))
+		adminRoutes.POST("/admin-users", handleCreateAdminUser(adminAuthService))
+		adminRoutes.PUT("/admin-users/:id", handleUpdateAdminUser(adminAuthService))
+		adminRoutes.PUT("/admin-users/:id/password", handleChangeAdminPassword(adminAuthService))
+		adminRoutes.DELETE("/admin-users/:id", handleDeleteAdminUser(adminAuthService))
 	}
 
 	// Start the server
@@ -2021,5 +2029,262 @@ func handleAdminAssignCourier(orderService *order.Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "Courier assigned successfully"})
+	}
+}
+
+// Admin User Management Handlers
+
+func handleGetAdminUsers(authService *admin.AdminAuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Query all admin users from database
+		db := authService.GetDB()
+		if db == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database not available"})
+			return
+		}
+
+		query := `
+			SELECT id, email, name, admin_role, permissions::text, is_active, last_login, created_at, updated_at
+			FROM admin_users
+			ORDER BY created_at DESC
+		`
+
+		rows, err := db.Query(query)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch admin users"})
+			return
+		}
+		defer rows.Close()
+
+		var admins []gin.H
+		for rows.Next() {
+			var id, email, name, role, permissions string
+			var isActive bool
+			var lastLogin sql.NullTime
+			var createdAt, updatedAt time.Time
+
+			if err := rows.Scan(&id, &email, &name, &role, &permissions, &isActive, &lastLogin, &createdAt, &updatedAt); err != nil {
+				continue
+			}
+
+			adminData := gin.H{
+				"id":          id,
+				"email":       email,
+				"name":        name,
+				"admin_role":  role,
+				"permissions": permissions,
+				"is_active":   isActive,
+				"created_at":  createdAt,
+				"updated_at":  updatedAt,
+			}
+			if lastLogin.Valid {
+				adminData["last_login"] = lastLogin.Time
+			}
+			admins = append(admins, adminData)
+		}
+
+		c.JSON(http.StatusOK, gin.H{"admin_users": admins})
+	}
+}
+
+func handleCreateAdminUser(authService *admin.AdminAuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			Email       string   `json:"email" binding:"required,email"`
+			Password    string   `json:"password" binding:"required,min=6"`
+			Name        string   `json:"name" binding:"required"`
+			AdminRole   string   `json:"admin_role" binding:"required"`
+			Permissions []string `json:"permissions"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Hash password
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+
+		// Generate new UUID
+		newID := uuid.New()
+
+		db := authService.GetDB()
+		query := `
+			INSERT INTO admin_users (id, email, password, name, admin_role, permissions, is_active)
+			VALUES ($1, $2, $3, $4, $5, $6, true)
+			RETURNING id, email, name, admin_role, created_at
+		`
+
+		var id, email, name, role string
+		var createdAt time.Time
+		permissionsArray := "{" + strings.Join(req.Permissions, ",") + "}"
+
+		err = db.QueryRow(query, newID, req.Email, string(hashedPassword), req.Name, req.AdminRole, permissionsArray).
+			Scan(&id, &email, &name, &role, &createdAt)
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key") {
+				c.JSON(http.StatusConflict, gin.H{"error": "Admin with this email already exists"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create admin user"})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"message": "Admin user created successfully",
+			"admin": gin.H{
+				"id":         id,
+				"email":      email,
+				"name":       name,
+				"admin_role": role,
+				"created_at": createdAt,
+			},
+		})
+	}
+}
+
+func handleUpdateAdminUser(authService *admin.AdminAuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adminID := c.Param("id")
+		if _, err := uuid.Parse(adminID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid admin ID"})
+			return
+		}
+
+		var req struct {
+			Name        string   `json:"name"`
+			AdminRole   string   `json:"admin_role"`
+			Permissions []string `json:"permissions"`
+			IsActive    *bool    `json:"is_active"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		db := authService.GetDB()
+
+		// Build dynamic update query
+		updates := []string{}
+		args := []interface{}{}
+		argIndex := 1
+
+		if req.Name != "" {
+			updates = append(updates, fmt.Sprintf("name = $%d", argIndex))
+			args = append(args, req.Name)
+			argIndex++
+		}
+		if req.AdminRole != "" {
+			updates = append(updates, fmt.Sprintf("admin_role = $%d", argIndex))
+			args = append(args, req.AdminRole)
+			argIndex++
+		}
+		if len(req.Permissions) > 0 {
+			updates = append(updates, fmt.Sprintf("permissions = $%d", argIndex))
+			permissionsArray := "{" + strings.Join(req.Permissions, ",") + "}"
+			args = append(args, permissionsArray)
+			argIndex++
+		}
+		if req.IsActive != nil {
+			updates = append(updates, fmt.Sprintf("is_active = $%d", argIndex))
+			args = append(args, *req.IsActive)
+			argIndex++
+		}
+
+		if len(updates) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
+			return
+		}
+
+		updates = append(updates, "updated_at = NOW()")
+		args = append(args, adminID)
+
+		query := fmt.Sprintf("UPDATE admin_users SET %s WHERE id = $%d", strings.Join(updates, ", "), argIndex)
+		_, err := db.Exec(query, args...)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update admin user"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Admin user updated successfully"})
+	}
+}
+
+func handleChangeAdminPassword(authService *admin.AdminAuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adminID := c.Param("id")
+		if _, err := uuid.Parse(adminID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid admin ID"})
+			return
+		}
+
+		var req struct {
+			NewPassword string `json:"new_password" binding:"required,min=6"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Hash new password
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+
+		db := authService.GetDB()
+		query := `UPDATE admin_users SET password = $1, updated_at = NOW() WHERE id = $2`
+		result, err := db.Exec(query, string(hashedPassword), adminID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
+			return
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Admin user not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
+	}
+}
+
+func handleDeleteAdminUser(authService *admin.AdminAuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		adminID := c.Param("id")
+		if _, err := uuid.Parse(adminID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid admin ID"})
+			return
+		}
+
+		// Prevent deleting the main super admin
+		if adminID == "a0000000-0000-0000-0000-000000000001" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Cannot delete the primary super admin account"})
+			return
+		}
+
+		db := authService.GetDB()
+		query := `DELETE FROM admin_users WHERE id = $1`
+		result, err := db.Exec(query, adminID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete admin user"})
+			return
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Admin user not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Admin user deleted successfully"})
 	}
 }

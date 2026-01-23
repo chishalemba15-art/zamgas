@@ -44,6 +44,11 @@ func NewAdminAuthService(db *sql.DB, jwtSecret string) *AdminAuthService {
 	}
 }
 
+// GetDB returns the database connection for admin user management operations
+func (s *AdminAuthService) GetDB() *sql.DB {
+	return s.db
+}
+
 // AdminSignIn authenticates an admin user
 func (s *AdminAuthService) AdminSignIn(email, password string) (*AdminUser, string, error) {
 	admin, err := s.GetAdminByEmail(email)
@@ -90,7 +95,7 @@ func (s *AdminAuthService) GenerateAdminToken(adminID uuid.UUID, role string) (s
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"admin_id": adminID.String(),
 		"role":     role,
-		"type":     "admin", // Distinguish admin tokens from user tokens
+		"type":     "admin",                                   // Distinguish admin tokens from user tokens
 		"exp":      time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
 	})
 
