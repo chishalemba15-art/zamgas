@@ -391,7 +391,7 @@ export default function CustomerDashboard() {
       // If mobile money, initiate payment
       if (orderForm.payment_method === 'mobile_money') {
         try {
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://zamgas-alb-934347338.us-east-1.elb.amazonaws.com'
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://zamgas-production.up.railway.app'
           const token = localStorage.getItem('authToken')
           
           console.log('Initiating payment for order ID:', orderResponse.order?.id || orderResponse.id)

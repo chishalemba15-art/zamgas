@@ -19,7 +19,7 @@ import { authAPI, setAuthToken } from '@/lib/api'
 import { useAuthStore } from '@/lib/authStore'
 import { useGoogleAuth } from '@/lib/useGoogleAuth'
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.zamgas.com'
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://zamgas-production.up.railway.app'
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('')

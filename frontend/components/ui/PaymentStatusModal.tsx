@@ -30,7 +30,7 @@ export function PaymentStatusModal({ isOpen, depositId, onClose, onSuccess, onFa
 
     const pollPaymentStatus = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://zamgas-alb-934347338.us-east-1.elb.amazonaws.com'
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://zamgas-production.up.railway.app'
         const response = await fetch(`${API_URL}/payments/status/${depositId}`)
         const rawData = await response.json()
         

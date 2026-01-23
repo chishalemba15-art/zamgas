@@ -6,7 +6,7 @@
 import * as SecureStore from 'expo-secure-store'
 
 // API Configuration
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.zamgas.com'
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://zamgas-production.up.railway.app'
 
 // Token management for React Native
 export const getAuthToken = async (): Promise<string | null> => {

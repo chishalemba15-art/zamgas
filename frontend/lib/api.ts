@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type { AxiosInstance, AxiosError } from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://zamgas-alb-934347338.us-east-1.elb.amazonaws.com'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://zamgas-production.up.railway.app'
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
