@@ -1,7 +1,7 @@
 'use client'
 
 import { ReactNode, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { AdminSidebar } from './AdminSidebar'
 import { AdminHeader } from './AdminHeader'
@@ -12,8 +12,17 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, isAuthenticated, isAdmin } = useAuthStore()
   const [isHydrated, setIsHydrated] = useState(false)
+
+  // Check if we're on the login page - don't show sidebar/header for login
+  const isLoginPage = pathname === '/admin/login' || pathname === '/admin/signin'
+
+  // If on login page, just render children without any wrapper or auth checks
+  if (isLoginPage) {
+    return <>{children}</>
+  }
 
   // Wait for Zustand persist to hydrate from localStorage
   useEffect(() => {
