@@ -512,6 +512,32 @@ export const adminAPI = {
     const response = await api.get(`/admin/logs/audit?page=${page}&limit=${limit}`)
     return response.data
   },
+
+  // Admin User Management
+  getAdminUsers: async () => {
+    const response = await api.get('/admin/admin-users')
+    return response.data
+  },
+
+  createAdminUser: async (data: { email: string; password: string; name: string; admin_role: string; permissions?: string[] }) => {
+    const response = await api.post('/admin/admin-users', data)
+    return response.data
+  },
+
+  updateAdminUser: async (adminId: string, data: { name?: string; admin_role?: string; permissions?: string[]; is_active?: boolean }) => {
+    const response = await api.put(`/admin/admin-users/${adminId}`, data)
+    return response.data
+  },
+
+  changeAdminPassword: async (adminId: string, newPassword: string) => {
+    const response = await api.put(`/admin/admin-users/${adminId}/password`, { new_password: newPassword })
+    return response.data
+  },
+
+  deleteAdminUser: async (adminId: string) => {
+    const response = await api.delete(`/admin/admin-users/${adminId}`)
+    return response.data
+  },
 }
 
 // Preferences API
