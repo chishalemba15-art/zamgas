@@ -19,13 +19,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   // Check if we're on the login page - don't show sidebar/header for login
   const isLoginPage = pathname === '/admin/login' || pathname === '/admin/signin'
 
-  // If on login page, just render children without any wrapper or auth checks
-  if (isLoginPage) {
-    return <>{children}</>
-  }
-
   // Wait for Zustand persist to hydrate from localStorage
+  // This useEffect MUST be called before any early returns to follow React hooks rules
   useEffect(() => {
+    // Skip auth logic for login page
+    if (isLoginPage) {
+      setIsHydrated(true)
+      return
+    }
+
     // Check if we have auth data in localStorage
     const hasStoredAuth = typeof window !== 'undefined' &&
       (localStorage.getItem('authToken') !== null || localStorage.getItem('user') !== null)
@@ -41,7 +43,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     }, 100)
 
     return () => clearTimeout(timer)
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, router, isLoginPage])
+
+  // If on login page, just render children without any wrapper or auth checks
+  if (isLoginPage) {
+    return <>{children}</>
+  }
 
   // Show loading while hydrating auth state
   if (!isHydrated) {
